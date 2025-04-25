@@ -8,7 +8,7 @@ const StateContext = createContext();
 
 export const StateContextProvider = ({ children }) => {
   const { contract } = useContract(
-    '0xf84bab6f1c2ae4f4cdfba3d921cecb593a765547',
+    '0xf84bab6f1c2ae4f4cdfba3d921cecb593a765547', /*Enter the address of the smart contract here*/
     'custom',
     { chainId: 11155111 } // Sepolia
   );  const { mutateAsync: createCampaign } = useContractWrite(contract, 'createCampaign');
