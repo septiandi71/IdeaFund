@@ -1,18 +1,24 @@
-// controllers/authController.js
+// ibik-crowdfund-backend/controllers/authController.js
 const authService = require('../services/authService');
+// const { validationResult } = require('express-validator'); // Jika Anda pakai
 
-// --- Registrasi Mahasiswa --- (Tetap sama)
+// --- Registrasi Mahasiswa ---
 exports.mhsRegRequestOtp = async (req, res, next) => {
   try {
-    const { nim, id_prodi } = req.body;
-    if (!nim || !id_prodi) {
-      const error = new Error('NIM dan ID Prodi diperlukan.');
+    const { nim, id_prodi, id_fakultas } = req.body;
+    if (!nim || !id_prodi || !id_fakultas) {
+      const error = new Error('NIM, ID Fakultas, dan ID Prodi diperlukan.');
       error.statusCode = 400;
       throw error;
     }
-    const resultService = await authService.requestMahasiswaRegistrationOtp({ nim, id_prodi_input: id_prodi });
+    const resultService = await authService.requestMahasiswaRegistrationOtp({ nim, id_prodi_input: id_prodi, id_fakultas_input: id_fakultas });
     
-    req.session.registrationAttempt = resultService.tempRegData; 
+    req.session.registrationAttempt = { 
+        ...resultService.tempRegData, 
+        type: 'mahasiswa'
+    }; 
+    await req.session.save();
+
     res.status(200).json({ message: resultService.message });
   } catch (error) {
     next(error);
@@ -27,15 +33,25 @@ exports.mhsRegFinalize = async (req, res, next) => {
       error.statusCode = 400;
       throw error;
     }
-    if (!req.session.registrationAttempt) {
-      const error = new Error('Sesi registrasi tidak ditemukan atau kedaluwarsa. Harap ulangi permintaan OTP.');
+    if (!req.session.registrationAttempt || req.session.registrationAttempt.type !== 'mahasiswa') {
+      const error = new Error('Sesi registrasi mahasiswa tidak ditemukan atau kedaluwarsa. Harap ulangi permintaan OTP.');
       error.statusCode = 400;
       throw error;
     }
     const result = await authService.finalizeMahasiswaRegistration(req.session.registrationAttempt, otp, walletAddress);
     
-    delete req.session.registrationAttempt; 
-    res.status(201).json(result);
+    req.session.registrationAttempt = null; 
+    await req.session.save();
+    
+    // Set cookie token setelah registrasi sukses (sama seperti login)
+    res.cookie('token', result.token, { 
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production', 
+        maxAge: 24 * 60 * 60 * 1000,
+        sameSite: 'lax' 
+    });
+
+    res.status(201).json({ message: result.message, user: result.user });
   } catch (error) {
     next(error);
   }
@@ -52,10 +68,10 @@ exports.donaturRegRequestOtp = async (req, res, next) => {
         }
         
         const userIdentifier = `reg_otp_req_donatur_${email}`;
-        if (req.session && req.session[userIdentifier] && req.session[userIdentifier].lastOtpRequestTime) {
+        if (req.session[userIdentifier] && req.session[userIdentifier].lastOtpRequestTime) {
             const lastReqTime = new Date(req.session[userIdentifier].lastOtpRequestTime).getTime();
             const currentTime = new Date().getTime();
-            const intervalSeconds = authService.OTP_RESEND_INTERVAL_SECONDS || 30;
+            const intervalSeconds = 30; // Anda bisa ambil dari authService.OTP_RESEND_INTERVAL_SECONDS
             if ((currentTime - lastReqTime) < (intervalSeconds * 1000)) {
                 const timeLeft = Math.ceil((intervalSeconds * 1000 - (currentTime - lastReqTime)) / 1000);
                 const error = new Error(`Harap tunggu ${timeLeft} detik sebelum meminta OTP baru.`);
@@ -64,11 +80,14 @@ exports.donaturRegRequestOtp = async (req, res, next) => {
             }
         }
 
-        const resultService = await authService.requestGenericUserRegistrationOtp(namaLengkap, email, 'donatur'); // Kirim 'donatur' sebagai role
+        const resultService = await authService.requestDonaturRegistrationOtp(namaLengkap, email);
         
-        req.session = req.session || {};
-        req.session.donaturRegistrationAttempt = resultService.tempRegData; 
+        req.session.donaturRegistrationAttempt = {
+            ...resultService.tempRegData,
+            type: 'donatur'
+        };
         req.session[userIdentifier] = { lastOtpRequestTime: new Date().toISOString() };
+        await req.session.save();
 
         res.status(200).json({ message: resultService.message });
     } catch (error) {
@@ -78,29 +97,38 @@ exports.donaturRegRequestOtp = async (req, res, next) => {
 
 exports.donaturRegFinalize = async (req, res, next) => {
     try {
-        const { otp, walletAddress } = req.body; // namaLengkap akan diambil dari session
-         if (!otp || !walletAddress) { // Tidak perlu namaLengkap dari body
+        const { otp, walletAddress } = req.body;
+         if (!otp || !walletAddress) {
             const error = new Error("OTP dan Alamat Wallet diperlukan.");
             error.statusCode = 400;
             throw error;
         }
-        if (!req.session.donaturRegistrationAttempt) { 
+        if (!req.session.donaturRegistrationAttempt || req.session.donaturRegistrationAttempt.type !== 'donatur') { 
             const error = new Error('Sesi registrasi Donatur tidak ditemukan atau kedaluwarsa. Harap ulangi permintaan OTP.');
             error.statusCode = 400;
             throw error;
         }
-        // Panggil finalizeGenericUserRegistration, namaLengkap ada di sessionData
-        const result = await authService.finalizeGenericUserRegistration(req.session.donaturRegistrationAttempt, otp, walletAddress, req.session.donaturRegistrationAttempt.namaLengkap);
         
-        delete req.session.donaturRegistrationAttempt;
+        const result = await authService.finalizeDonaturRegistration(req.session.donaturRegistrationAttempt, otp, walletAddress);
         
-        res.status(201).json(result);
+        req.session.donaturRegistrationAttempt = null;
+        await req.session.save();
+
+        // Set cookie token setelah registrasi sukses
+        res.cookie('token', result.token, { 
+            httpOnly: true, 
+            secure: process.env.NODE_ENV === 'production', 
+            maxAge: 24 * 60 * 60 * 1000,
+            sameSite: 'lax' 
+        });
+        
+        res.status(201).json({ message: result.message, user: result.user });
     } catch (error) {
         next(error);
     }
 };
 
-// --- Login & Lainnya (Tetap Sama) ---
+// --- Login (Wallet + OTP) ---
 exports.requestOtpForLogin = async (req, res, next) => {
   try {
     const { walletAddress } = req.body;
@@ -110,6 +138,7 @@ exports.requestOtpForLogin = async (req, res, next) => {
       throw error;
     }
     const result = await authService.requestLoginOtp(walletAddress, req.session); 
+    await req.session.save();
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -139,23 +168,32 @@ exports.loginWithOtp = async (req, res, next) => {
   }
 };
 
+// --- Logout ---
 exports.logoutUser = async (req, res, next) => {
     try {
-        const result = await authService.logoutUser(req); 
-        res.clearCookie('token'); 
-        res.status(200).json(result);
+        req.session.destroy(err => {
+            if (err) {
+                console.error("Session destruction error:", err);
+                // Tetap lanjutkan clear cookie
+            }
+            res.clearCookie('token'); 
+            return res.status(200).json({ message: 'Logout berhasil.' });
+        });
     } catch (error) {
         next(error);
     }
 };
 
+// --- Get Current User Profile (Endpoint /me) ---
 exports.getCurrentUserProfile = async (req, res, next) => {
     try {
+        // req.user diisi oleh middleware protectRoute jika token valid
         if (!req.user) { 
-            const error = new Error('Tidak terautentikasi. Tidak ada data pengguna.');
-            error.statusCode = 401;
+            const error = new Error('Data pengguna tidak ditemukan dari token.');
+            error.statusCode = 401; 
             throw error;
         }
+        // Kembalikan data pengguna yang ada di req.user (dari payload token)
         res.status(200).json({ user: req.user });
     } catch (error) {
         next(error);
