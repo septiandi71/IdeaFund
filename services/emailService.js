@@ -33,7 +33,7 @@ async function sendOtpEmail(toEmail, otp) {
         <h2 style="color: #333;">Verifikasi Akun IBIK IdeaFund Anda</h2>
         <p>Terima kasih telah menggunakan IBIK IdeaFund.</p>
         <p>Kode OTP Anda adalah: <strong style="font-size: 1.2em; color: #007bff;">${otp}</strong></p>
-        <p>Kode ini hanya berlaku selama beberapa menit (sesuai pengaturan sistem, biasanya 5 atau 10 menit). Mohon jangan berikan kode ini kepada siapa pun untuk menjaga keamanan akun Anda.</p>
+        <p>Kode ini hanya berlaku selama 10 menit. Mohon jangan berikan kode ini kepada siapa pun untuk menjaga keamanan akun Anda.</p>
         <p>Jika Anda tidak meminta kode ini, abaikan email ini.</p>
         <br/>
         <p>Salam,</p>

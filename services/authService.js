@@ -10,11 +10,15 @@ function generateOtp() {
 }
 
 const OTP_EXPIRY_MINUTES = 10;
+const OTP_RESEND_INTERVAL_SECONDS = 30;
 
-// --- REGISTRASI MAHASISWA ---
+// --- REGISTRASI MAHASISWA --- (Tetap sama seperti versi terakhir yang sudah benar)
 async function requestMahasiswaRegistrationOtp(data) {
-  const { nim, emailKampus, id_prodi } = data;
-  console.log(data);
+  const { nim, id_prodi_input } = data;
+
+  if (!nim || !id_prodi_input) {
+    throw new Error('NIM dan Program Studi harus diisi.');
+  }
 
   const mahasiswaRef = await MahasiswaReferensi.findOne({
     where: { nim },
@@ -22,35 +26,34 @@ async function requestMahasiswaRegistrationOtp(data) {
   });
 
   if (!mahasiswaRef) throw new Error('NIM tidak terdaftar dalam data referensi.');
-  if (mahasiswaRef.emailKampus.toLowerCase() !== emailKampus.toLowerCase()) {
-    throw new Error('Email kampus tidak sesuai dengan data referensi NIM ini.');
-  }
-  if (mahasiswaRef.id_prodi !== parseInt(id_prodi)) {
-    throw new Error('Program Studi tidak sesuai dengan data referensi NIM ini.');
+  if (mahasiswaRef.id_prodi !== parseInt(id_prodi_input)) {
+    throw new Error('Program Studi yang dipilih tidak sesuai dengan data referensi untuk NIM ini.');
   }
 
   const existingMahasiswaByNim = await Mahasiswa.findOne({ where: { nim } });
   if (existingMahasiswaByNim) throw new Error('NIM sudah terdaftar.');
-  const existingMahasiswaByEmail = await Mahasiswa.findOne({ where: { emailKampus } });
-  if (existingMahasiswaByEmail) throw new Error('Email kampus sudah terdaftar.');
+  const existingMahasiswaByEmail = await Mahasiswa.findOne({ where: { emailKampus: mahasiswaRef.emailKampus } });
+  if (existingMahasiswaByEmail) throw new Error('Email kampus yang terkait dengan NIM ini sudah terdaftar oleh pengguna lain.');
 
   const otp = generateOtp();
   const otpExpiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+  const emailKampusDariReferensi = mahasiswaRef.emailKampus;
 
-  const emailSent = await sendOtpEmail(mahasiswaRef.emailKampus, otp);
+  const emailSent = await sendOtpEmail(emailKampusDariReferensi, otp);
   if (!emailSent) throw new Error('Gagal mengirim OTP ke email kampus Anda.');
 
   return {
-    message: 'OTP registrasi telah dikirim ke email kampus Anda.',
-    tempRegData: { // Data ini akan disimpan di session oleh controller
+    message: `OTP registrasi telah dikirim ke ${emailKampusDariReferensi}.`,
+    tempRegData: {
       nim: mahasiswaRef.nim,
       namaLengkap: mahasiswaRef.namaLengkap,
-      emailKampus: mahasiswaRef.emailKampus,
+      emailKampus: emailKampusDariReferensi,
       id_prodi: mahasiswaRef.id_prodi,
       namaKelas: mahasiswaRef.namaKelas,
       tahunMasuk: mahasiswaRef.tahunMasuk,
       otp,
-      otpExpiresAt: otpExpiresAt.toISOString() // Simpan sebagai ISO string
+      otpExpiresAt: otpExpiresAt.toISOString(),
+      lastOtpRequestTime: new Date().toISOString()
     }
   };
 }
@@ -71,7 +74,7 @@ async function finalizeMahasiswaRegistration(sessionData, otpInput, walletAddres
   if (admByWallet) throw new Error('Alamat Wallet sudah terdaftar oleh Admin.');
 
   const newMahasiswa = await Mahasiswa.create({
-    id: crypto.randomUUID(), // Jika PK Mahasiswa adalah UUID
+    id: crypto.randomUUID(),
     nim: sessionData.nim,
     namaLengkap: sessionData.namaLengkap,
     emailKampus: sessionData.emailKampus,
@@ -83,23 +86,27 @@ async function finalizeMahasiswaRegistration(sessionData, otpInput, walletAddres
     otp: null,
     otpExpiresAt: null,
   });
-  return { message: 'Registrasi mahasiswa berhasil.', user: { id:newMahasiswa.id, nim: newMahasiswa.nim, email: newMahasiswa.emailKampus, role: 'mahasiswa', walletAddress: newMahasiswa.walletAddress } };
+  return { message: 'Registrasi mahasiswa berhasil.', user: { id:newMahasiswa.id, nim: newMahasiswa.nim, namaLengkap: newMahasiswa.namaLengkap, email: newMahasiswa.emailKampus, role: 'mahasiswa', walletAddress: newMahasiswa.walletAddress } };
 }
 
-// --- REGISTRASI DONATUR & ADMIN ---
-async function requestGenericUserRegistrationOtp(email, role) {
+
+// --- REGISTRASI DONATUR & ADMIN (PENYESUAIAN ALUR INPUT & FIELD NAMA) ---
+// Tahap 1: Input Nama & Email, Kirim OTP
+async function requestGenericUserRegistrationOtp(namaLengkap, email, role) { // Terima namaLengkap di sini
   const Model = role === 'donatur' ? Donatur : Admin;
+  
   const existingUserByEmail = await Model.findOne({ where: { email } });
   if (existingUserByEmail) throw new Error(`Email sudah terdaftar sebagai ${role}.`);
-
+  
   // Cek unik email lintas peran
   if (role === 'donatur') {
       const mhs = await Mahasiswa.findOne({where: {emailKampus: email}}); if(mhs) throw new Error('Email sudah terdaftar sebagai Mahasiswa.');
       const adm = await Admin.findOne({where: {email: email}}); if(adm) throw new Error('Email sudah terdaftar sebagai Admin.');
-  } else if (role === 'admin') {
-      const mhs = await Mahasiswa.findOne({where: {emailKampus: email}}); if(mhs) throw new Error('Email sudah terdaftar sebagai Mahasiswa.');
-      const don = await Donatur.findOne({where: {email: email}}); if(don) throw new Error('Email sudah terdaftar sebagai Donatur.');
+  } else if (role === 'admin') { // Jika ada registrasi Admin, sekarang tidak ada
+      // const mhs = await Mahasiswa.findOne({where: {emailKampus: email}}); if(mhs) throw new Error('Email sudah terdaftar sebagai Mahasiswa.');
+      // const don = await Donatur.findOne({where: {email: email}}); if(don) throw new Error('Email sudah terdaftar sebagai Donatur.');
   }
+
 
   const otp = generateOtp();
   const otpExpiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
@@ -108,13 +115,21 @@ async function requestGenericUserRegistrationOtp(email, role) {
 
   return {
     message: 'OTP registrasi telah dikirim ke email Anda.',
-    tempRegData: { email, role, otp, otpExpiresAt: otpExpiresAt.toISOString() }
+    tempRegData: { 
+        namaLengkap, // Simpan namaLengkap dari input awal
+        email, 
+        role, 
+        otp, 
+        otpExpiresAt: otpExpiresAt.toISOString(), 
+        lastOtpRequestTime: new Date().toISOString() 
+    }
   };
 }
 
-async function finalizeGenericUserRegistration(sessionData, otpInput, walletAddress, namaLengkap) {
-  if (!sessionData || !sessionData.otp || !sessionData.otpExpiresAt || !sessionData.role || !sessionData.email) {
-    throw new Error('Sesi registrasi tidak valid atau data tidak lengkap.');
+// Tahap 2: Finalisasi Registrasi Donatur/Admin dengan OTP & Wallet (Nama diambil dari session)
+async function finalizeGenericUserRegistration(sessionData, otpInput, walletAddress) { // Tidak perlu namaLengkap lagi di sini
+  if (!sessionData || !sessionData.otp || !sessionData.otpExpiresAt || !sessionData.role || !sessionData.email || !sessionData.namaLengkap) {
+    throw new Error('Sesi registrasi tidak valid atau data awal (nama/email) tidak lengkap.');
   }
   if (otpInput !== sessionData.otp || new Date() > new Date(sessionData.otpExpiresAt)) {
     throw new Error('OTP salah atau sudah kedaluwarsa.');
@@ -126,32 +141,43 @@ async function finalizeGenericUserRegistration(sessionData, otpInput, walletAddr
   if (mhsByWallet) throw new Error('Alamat Wallet sudah terdaftar oleh Mahasiswa.');
   if (sessionData.role === 'donatur') {
       const admByWallet = await Admin.findOne({where: {walletAddress}}); if(admByWallet) throw new Error('Alamat Wallet sudah terdaftar sebagai Admin.');
-  } else if (sessionData.role === 'admin') {
-      const donByWallet = await Donatur.findOne({where: {walletAddress}}); if(donByWallet) throw new Error('Alamat Wallet sudah terdaftar sebagai Donatur.');
+  } else if (sessionData.role === 'admin') { // Jika ada registrasi Admin
+      // const donByWallet = await Donatur.findOne({where: {walletAddress}}); if(donByWallet) throw new Error('Alamat Wallet sudah terdaftar sebagai Donatur.');
   }
   const existingUserByWallet = await Model.findOne({where: {walletAddress}});
   if(existingUserByWallet) throw new Error(`Alamat Wallet sudah terdaftar sebagai ${sessionData.role}.`);
 
 
   const newUser = await Model.create({
-    // id akan di-generate otomatis oleh defaultValue: DataTypes.UUIDV4 di model
-    nama: namaLengkap,
+    id: crypto.randomUUID(), 
+    namaLengkap: sessionData.namaLengkap, // <<< GUNAKAN namaLengkap
     email: sessionData.email,
     walletAddress,
     otp: null,
     otpExpiresAt: null,
   });
   return { 
-    message: `Registrasi ${sessionData.role} berhasil.`, 
-    user: { id: newUser.id, nama: newUser.nama, email: newUser.email, role: sessionData.role, walletAddress: newUser.walletAddress } 
-  };
+      message: `Registrasi ${sessionData.role} berhasil.`, 
+      user: { id: newUser.id, namaLengkap: newUser.namaLengkap, email: newUser.email, role: sessionData.role, walletAddress: newUser.walletAddress } // Kirim namaLengkap
+    };
 }
 
-// --- LOGIN PENGGUNA (Wallet + OTP) ---
-async function requestLoginOtp(walletAddress) {
+
+// --- LOGIN PENGGUNA (Wallet + OTP untuk Mahasiswa, Donatur, Admin) ---
+async function requestLoginOtp(walletAddress, session) {
   let user;
   let role;
   let emailTarget;
+  let userIdentifier = `login_otp_req_${walletAddress}`; 
+
+  if (session && session[userIdentifier] && session[userIdentifier].lastOtpRequestTime) {
+    const lastReqTime = new Date(session[userIdentifier].lastOtpRequestTime).getTime();
+    const currentTime = new Date().getTime();
+    if ((currentTime - lastReqTime) < (OTP_RESEND_INTERVAL_SECONDS * 1000)) {
+      const timeLeft = Math.ceil((OTP_RESEND_INTERVAL_SECONDS * 1000 - (currentTime - lastReqTime)) / 1000);
+      throw new Error(`Harap tunggu ${timeLeft} detik sebelum meminta OTP baru.`);
+    }
+  }
 
   user = await Mahasiswa.findOne({ where: { walletAddress } });
   if (user) {
@@ -164,7 +190,7 @@ async function requestLoginOtp(walletAddress) {
       role = 'donatur';
       emailTarget = user.email;
     } else {
-      user = await Admin.findOne({ where: { walletAddress } });
+      user = await Admin.findOne({ where: { walletAddress } }); // Admin login via Wallet+OTP
       if (user) {
         role = 'admin';
         emailTarget = user.email;
@@ -180,6 +206,10 @@ async function requestLoginOtp(walletAddress) {
 
   const emailSent = await sendOtpEmail(emailTarget, otp);
   if (!emailSent) throw new Error('Gagal mengirim OTP ke email Anda.');
+  
+  if (session) {
+      session[userIdentifier] = { lastOtpRequestTime: new Date().toISOString() };
+  }
   
   return { message: 'OTP login telah dikirim ke email Anda.' };
 }
@@ -212,10 +242,11 @@ async function verifyOtpAndLogin(walletAddress, otpInput) {
   }
   await user.update({ otp: null, otpExpiresAt: null });
 
+  // Menyiapkan payload untuk JWT
   if (role === 'mahasiswa') {
-    userDataForToken = { id: user.id, nim: user.nim, walletAddress: user.walletAddress, role, email: user.emailKampus, nama: user.namaLengkap };
-  } else {
-    userDataForToken = { id: user.id, walletAddress: user.walletAddress, role, email: user.email, nama: user.nama };
+    userDataForToken = { id: user.id, nim: user.nim, walletAddress: user.walletAddress, role, email: user.emailKampus, namaLengkap: user.namaLengkap }; // <<< namaLengkap
+  } else { // Donatur atau Admin
+    userDataForToken = { id: user.id, walletAddress: user.walletAddress, role, email: user.email, namaLengkap: user.namaLengkap }; // <<< namaLengkap
   }
   
   const token = jwt.sign(
@@ -243,12 +274,12 @@ async function logoutUser(req) {
     });
 }
 
-
 module.exports = {
   requestMahasiswaRegistrationOtp,
   finalizeMahasiswaRegistration,
-  requestGenericUserRegistrationOtp,
-  finalizeGenericUserRegistration,
+  requestGenericUserRegistrationOtp, // Ini akan dipakai Donatur
+  finalizeGenericUserRegistration, // Ini akan dipakai Donatur
+  // Fungsi registrasi Admin tidak ada lagi
   requestLoginOtp,
   verifyOtpAndLogin,
   logoutUser,

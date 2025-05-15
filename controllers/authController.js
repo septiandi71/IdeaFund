@@ -1,21 +1,18 @@
 // controllers/authController.js
 const authService = require('../services/authService');
-const { validationResult } = require('express-validator'); // Jika Anda pakai express-validator
 
-// --- Registrasi Mahasiswa ---
+// --- Registrasi Mahasiswa --- (Tetap sama)
 exports.mhsRegRequestOtp = async (req, res, next) => {
   try {
-    // Tambahkan validasi input dari express-validator di sini jika perlu
-    const { nim, id_prodi, emailKampus } = req.body;
-    if (!nim || !id_prodi || !emailKampus) {
-      const error = new Error('NIM, ID Prodi, dan Email Kampus diperlukan.');
+    const { nim, id_prodi } = req.body;
+    if (!nim || !id_prodi) {
+      const error = new Error('NIM dan ID Prodi diperlukan.');
       error.statusCode = 400;
       throw error;
     }
-    const resultService = await authService.requestMahasiswaRegistrationOtp({ nim, id_prodi, emailKampus });
+    const resultService = await authService.requestMahasiswaRegistrationOtp({ nim, id_prodi_input: id_prodi });
     
-    req.session.registrationAttempt = resultService.tempRegData; // Simpan data ke session
-
+    req.session.registrationAttempt = resultService.tempRegData; 
     res.status(200).json({ message: resultService.message });
   } catch (error) {
     next(error);
@@ -37,25 +34,41 @@ exports.mhsRegFinalize = async (req, res, next) => {
     }
     const result = await authService.finalizeMahasiswaRegistration(req.session.registrationAttempt, otp, walletAddress);
     
-    delete req.session.registrationAttempt; // Hapus data session setelah berhasil
+    delete req.session.registrationAttempt; 
     res.status(201).json(result);
   } catch (error) {
     next(error);
   }
 };
 
-// --- Registrasi Donatur & Admin ---
-exports.genericUserRegRequestOtp = async (req, res, next) => {
+// --- Registrasi Donatur ---
+exports.donaturRegRequestOtp = async (req, res, next) => {
     try {
-        const { email, role } = req.body; // role akan di-set di routes
-        if (!email || !['donatur', 'admin'].includes(role)) {
-            const error = new Error("Email dan Peran (donatur/admin) valid diperlukan.");
+        const { email, namaLengkap } = req.body; 
+        if (!email || !namaLengkap) {
+            const error = new Error("Email dan Nama Lengkap diperlukan.");
             error.statusCode = 400;
             throw error;
         }
-        const resultService = await authService.requestGenericUserRegistrationOtp(email, role);
         
-        req.session.genericRegistrationAttempt = resultService.tempRegData;
+        const userIdentifier = `reg_otp_req_donatur_${email}`;
+        if (req.session && req.session[userIdentifier] && req.session[userIdentifier].lastOtpRequestTime) {
+            const lastReqTime = new Date(req.session[userIdentifier].lastOtpRequestTime).getTime();
+            const currentTime = new Date().getTime();
+            const intervalSeconds = authService.OTP_RESEND_INTERVAL_SECONDS || 30;
+            if ((currentTime - lastReqTime) < (intervalSeconds * 1000)) {
+                const timeLeft = Math.ceil((intervalSeconds * 1000 - (currentTime - lastReqTime)) / 1000);
+                const error = new Error(`Harap tunggu ${timeLeft} detik sebelum meminta OTP baru.`);
+                error.statusCode = 429;
+                throw error;
+            }
+        }
+
+        const resultService = await authService.requestGenericUserRegistrationOtp(namaLengkap, email, 'donatur'); // Kirim 'donatur' sebagai role
+        
+        req.session = req.session || {};
+        req.session.donaturRegistrationAttempt = resultService.tempRegData; 
+        req.session[userIdentifier] = { lastOtpRequestTime: new Date().toISOString() };
 
         res.status(200).json({ message: resultService.message });
     } catch (error) {
@@ -63,23 +76,23 @@ exports.genericUserRegRequestOtp = async (req, res, next) => {
     }
 };
 
-exports.genericUserRegFinalize = async (req, res, next) => {
+exports.donaturRegFinalize = async (req, res, next) => {
     try {
-        const { otp, walletAddress, namaLengkap } = req.body;
-         if (!otp || !walletAddress || !namaLengkap) {
-            const error = new Error("OTP, Alamat Wallet, dan Nama Lengkap diperlukan.");
+        const { otp, walletAddress } = req.body; // namaLengkap akan diambil dari session
+         if (!otp || !walletAddress) { // Tidak perlu namaLengkap dari body
+            const error = new Error("OTP dan Alamat Wallet diperlukan.");
             error.statusCode = 400;
             throw error;
         }
-        if (!req.session.genericRegistrationAttempt) {
-            const error = new Error('Sesi registrasi tidak ditemukan atau kedaluwarsa. Harap ulangi permintaan OTP.');
+        if (!req.session.donaturRegistrationAttempt) { 
+            const error = new Error('Sesi registrasi Donatur tidak ditemukan atau kedaluwarsa. Harap ulangi permintaan OTP.');
             error.statusCode = 400;
             throw error;
         }
+        // Panggil finalizeGenericUserRegistration, namaLengkap ada di sessionData
+        const result = await authService.finalizeGenericUserRegistration(req.session.donaturRegistrationAttempt, otp, walletAddress, req.session.donaturRegistrationAttempt.namaLengkap);
         
-        const result = await authService.finalizeGenericUserRegistration(req.session.genericRegistrationAttempt, otp, walletAddress, namaLengkap);
-        
-        delete req.session.genericRegistrationAttempt;
+        delete req.session.donaturRegistrationAttempt;
         
         res.status(201).json(result);
     } catch (error) {
@@ -87,8 +100,7 @@ exports.genericUserRegFinalize = async (req, res, next) => {
     }
 };
 
-
-// --- Login (Wallet + OTP) ---
+// --- Login & Lainnya (Tetap Sama) ---
 exports.requestOtpForLogin = async (req, res, next) => {
   try {
     const { walletAddress } = req.body;
@@ -97,7 +109,7 @@ exports.requestOtpForLogin = async (req, res, next) => {
       error.statusCode = 400;
       throw error;
     }
-    const result = await authService.requestLoginOtp(walletAddress);
+    const result = await authService.requestLoginOtp(walletAddress, req.session); 
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -127,30 +139,23 @@ exports.loginWithOtp = async (req, res, next) => {
   }
 };
 
-// --- Logout ---
 exports.logoutUser = async (req, res, next) => {
     try {
-        const result = await authService.logoutUser(req);
-        res.clearCookie('token'); // Hapus cookie token utama
-        // Jika Anda menggunakan cookie lain untuk session, hapus juga di sini
-        // Contoh: res.clearCookie('connect.sid'); // Nama default cookie express-session
+        const result = await authService.logoutUser(req); 
+        res.clearCookie('token'); 
         res.status(200).json(result);
     } catch (error) {
         next(error);
     }
 };
 
-// --- Get Current User Profile (Contoh rute terproteksi) ---
-// Anda perlu middleware 'protectRoute' yang memverifikasi JWT dan mengisi req.user
 exports.getCurrentUserProfile = async (req, res, next) => {
     try {
-        // Asumsi 'protectRoute' middleware akan mengisi req.user
-        if (!req.user) { // req.user diisi oleh middleware autentikasi setelah verifikasi token
+        if (!req.user) { 
             const error = new Error('Tidak terautentikasi. Tidak ada data pengguna.');
             error.statusCode = 401;
             throw error;
         }
-        // Kembalikan data pengguna dari token (sudah berisi info yang relevan)
         res.status(200).json({ user: req.user });
     } catch (error) {
         next(error);

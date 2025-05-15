@@ -8,7 +8,7 @@ module.exports = {
         type: Sequelize.UUID, // atau Sequelize.STRING(36)
         defaultValue: Sequelize.UUIDV4 // Di model, bukan migrasi
       },
-      nama: { type: Sequelize.STRING(255), allowNull: false },
+      namaLengkap: { type: Sequelize.STRING(255), allowNull: false },
       email: { type: Sequelize.STRING(255), allowNull: false, unique: true },
       walletAddress: { type: Sequelize.STRING(42), allowNull: false, unique: true },
       otp: { type: Sequelize.STRING(6), allowNull: true },
