@@ -4,7 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
-
+body{
+  background-color: #13131a;
+}
 
 .linear-gradient {
   background: linear-gradient(
@@ -17,4 +19,34 @@
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
   filter: invert(0.8);
+}
+
+/* src/index.css atau file CSS global lainnya */
+@keyframes fadeInAnimation {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.animate-fadeIn {
+  animation: fadeInAnimation ease-in 0.3s; /* Durasi bisa disesuaikan */
+  animation-fill-mode: forwards;
+}
+
+.truncate_2_lines {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;  
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.truncate_3_lines {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;  
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

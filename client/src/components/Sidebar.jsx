@@ -56,7 +56,7 @@ const Sidebar = () => {
                   if(!link.disabled) {
                     setIsActive(link.name);
                     if (link.name.toLowerCase() === 'logout') {
-                      logout().then(() => navigate('/login'));
+                      logout().then(() => navigate('/'));
                     } else {
                       navigate(link.link);
                     }

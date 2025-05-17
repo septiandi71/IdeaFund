@@ -104,9 +104,9 @@ const RegisterMahasiswaPage2Otp = () => {
                 <ConnectButton
                     client={client}
                     wallets={supportedWallets}
-                    theme={"light"} 
+                    theme={"dark"} 
                     connectModal={{
-                        size: "wide",
+                        size: "compact",
                         title: "Pilih Dompet Anda",
                         welcomeScreen: {
                             title: "Selamat Datang di IBIK IdeaFund",

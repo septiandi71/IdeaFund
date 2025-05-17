@@ -11,8 +11,9 @@ import {
   Home, 
   Profile, 
   CreateCampaign, 
+  ExploreCampaignPage,
   CampaignDetails,
-  LoginPage, // Pastikan LoginPage sudah di-update untuk pakai ConnectButton baru
+  LoginPage,
   RegisterOptionsPage,
   RegisterMahasiswaPage1,
   RegisterMahasiswaPage2Otp,
@@ -45,17 +46,12 @@ const App = ({ client }) => {
         <Route path="/register-donatur-otp" element={<RegisterDonaturPage2Otp client={client} />} /> {/* Jika ada ConnectButton di sini */}
       </Route>
 
-      <Route element={<ProtectedRoute><DashboardLayout /* client={client} */ /></ProtectedRoute>}> {/* Jika DashboardLayout merender Navbar yg butuh client */}
+      {/* Rute Terproteksi */}
+      <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/profile" element={<Profile />} />
-        <Route 
-            path="/create-campaign" 
-            element={
-                <ProtectedRoute allowedRoles={['mahasiswa']}>
-                    <CreateCampaign />
-                </ProtectedRoute>
-            } 
-        />
+        <Route path="/explore-campaign" element={<ExploreCampaignPage />} /> {/* Home.jsx sekarang menampilkan daftar proyek jika diakses dari /explore */}
+        <Route path="/create-campaign" element={<ProtectedRoute allowedRoles={['mahasiswa']}><CreateCampaign /></ProtectedRoute>}/>
         <Route path="/campaign-details/:id" element={<CampaignDetails />} />
       </Route>
       
