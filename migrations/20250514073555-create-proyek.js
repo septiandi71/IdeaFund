@@ -26,7 +26,7 @@ module.exports = {
         references: { model: 'Kategori', key: 'id_kategori' }, // Nama tabel Kategori
         onUpdate: 'CASCADE', onDelete: 'RESTRICT'
       },
-      nftImageUrl: { type: Sequelize.STRING(255), allowNull: true },
+      projectImageUrl: { type: Sequelize.STRING(255), allowNull: true },
       // Tambahkan atribut lain untuk NFT jika perlu (deskripsi, min donasi)
       isStage1Verified: { type: Sequelize.BOOLEAN, defaultValue: false },
       isStage2Verified: { type: Sequelize.BOOLEAN, defaultValue: false },

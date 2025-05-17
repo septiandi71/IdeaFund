@@ -4,35 +4,33 @@ const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
-const cookieParser = require('cookie-parser'); // Diperlukan untuk req.cookies
-const db = require('./models'); // Memuat models/index.js
+const cookieParser = require('cookie-parser');
+const db = require('./models'); 
 
 // Impor Rute
 const authRoutes = require('./routes/authRoutes');
-const dataReferensiRoutes = require('./routes/dataReferensiRoutes'); // Jika sudah Anda buat
-// const projectRoutes = require('./routes/projectRoutes'); 
+const dataReferensiRoutes = require('./routes/dataReferensiRoutes');
+const projectRoutes = require('./routes/projectRoutes'); // <-- BARU: Impor rute proyek
 // const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
-// Konfigurasi Session Store dengan Sequelize
 const sessionStore = new SequelizeStore({
   db: db.sequelize,
-  tableName: 'Sessions', 
-  checkExpirationInterval: 15 * 60 * 1000, // Membersihkan sesi kedaluwarsa setiap 15 menit
-  expiration: 24 * 60 * 60 * 1000  // Sesi berlaku 24 jam
+  tableName: 'Sessions',
+  checkExpirationInterval: 15 * 60 * 1000, 
+  expiration: 24 * 60 * 60 * 1000  
 });
 
 // Middleware
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173', // Sesuaikan dengan port Vite Anda
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173', 
     credentials: true 
 }));
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser()); // Middleware untuk parsing cookie
+app.use(cookieParser()); 
 
-// Konfigurasi Session Middleware
 app.use(session({
   secret: process.env.SESSION_SECRET,
   store: sessionStore,
@@ -44,7 +42,6 @@ app.use(session({
     maxAge: 24 * 60 * 60 * 1000 
   }
 }));
-// Sinkronisasi tabel session (sebaiknya dilakukan sekali atau via migrasi)
 sessionStore.sync(); 
 
 // Routes
@@ -53,11 +50,11 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
-app.use('/api/data', dataReferensiRoutes); // Jika sudah Anda buat
-// app.use('/api/projects', projectRoutes); 
+app.use('/api/data', dataReferensiRoutes);
+app.use('/api/projects', projectRoutes); // <-- BARU: Daftarkan rute proyek
 // app.use('/api/admin', adminRoutes); 
 
-// Global Error Handler Sederhana
+// Global Error Handler
 app.use((err, req, res, next) => {
   console.error("GLOBAL ERROR HANDLER:");
   console.error("Message:", err.message);
@@ -69,7 +66,7 @@ app.use((err, req, res, next) => {
   res.status(statusCode).json({ success: false, message });
 });
 
-const PORT = process.env.PORT || 3001; // Menggunakan PORT dari .env
+const PORT = process.env.PORT || 3001;
 
 db.sequelize.authenticate()
   .then(() => {

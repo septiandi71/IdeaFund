@@ -19,7 +19,7 @@ module.exports = (sequelize) => {
     status: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'PENDING_REVIEW' },
     pemilikId: { type: DataTypes.UUID, allowNull: false },
     kategoriId: { type: DataTypes.INTEGER, allowNull: false },
-    nftImageUrl: { type: DataTypes.STRING(255), allowNull: true },
+    projectImageUrl: { type: DataTypes.STRING(255), allowNull: true },
     isStage1Verified: { type: DataTypes.BOOLEAN, defaultValue: false },
     isStage2Verified: { type: DataTypes.BOOLEAN, defaultValue: false }
   }, {
