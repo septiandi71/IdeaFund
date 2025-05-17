@@ -1,9 +1,9 @@
 // src/pages/CreateCampaign.jsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ethers } from 'ethers'; 
+// import { ethers } from 'ethers'; // Hanya jika masih berinteraksi dengan SC yang butuh ethers di frontend
 import { useAuthContext } from '../context/AuthContext';
-import { useStateContext } from '../context/'; 
+// import { useStateContext } from '../context/StateContext'; // Jika interaksi SC dipindah ke backend
 import { FormField, CustomButton, Loader, ToggleSwitch } from '../components';
 import axios from 'axios'; 
 
@@ -12,7 +12,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 const CreateCampaign = () => {
   const navigate = useNavigate();
   const { user, isLoading: authIsLoading } = useAuthContext();
-  const { createCampaign, isLoading: isSCCreating } = useStateContext(); 
+  // const { createCampaign, isLoading: isSCCreating } = useStateContext(); // Jika SC call dari frontend
 
   const [kategoriList, setKategoriList] = useState([]);
   const [isLoadingKategori, setIsLoadingKategori] = useState(false);
@@ -23,13 +23,10 @@ const CreateCampaign = () => {
     targetDana: '', 
     durasiHari: '14', 
     kategoriId: '',
-    projectImageUrl: '', // Untuk gambar utama proyek
+    projectImageFile: null, // Menyimpan objek File untuk gambar utama
+    projectImageUrlPreview: null, // Untuk menampilkan preview gambar
     isNftReward: false,
-    // namaNft dan deskripsiNft tetap ada jika Anda ingin menyimpannya di backend
-    // atau jika smart contract Anda membutuhkannya (meskipun tidak ada input field terpisah lagi)
-    // Untuk contoh ini, kita asumsikan nama NFT bisa sama dengan judul proyek atau dikelola backend
-    // dan deskripsi NFT bisa diambil dari deskripsi proyek atau dikelola backend.
-    // Jika Anda ingin input terpisah untuk nama/deskripsi NFT, tambahkan kembali FormField-nya.
+    // namaNft dan deskripsiNft dihilangkan
     isProyekTim: false,
     anggotaTim: [], 
   });
@@ -61,8 +58,30 @@ const CreateCampaign = () => {
     fetchKategori();
   }, []);
 
-  const handleFormFieldChange = (fieldName, e) => {
+  const handleInputChange = (fieldName, e) => {
     setForm({ ...form, [fieldName]: e.target.value });
+  };
+  
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        if (!file.type.startsWith('image/')) {
+            setFormError('Hanya file gambar (JPG, PNG, GIF) yang diizinkan.');
+            setForm(prev => ({...prev, projectImageFile: null, projectImageUrlPreview: null}));
+            e.target.value = null; // Reset input file
+            return;
+        }
+        if (file.size > 2 * 1024 * 1024) { // Maks 2MB
+            setFormError('Ukuran file gambar maksimal 2MB.');
+            setForm(prev => ({...prev, projectImageFile: null, projectImageUrlPreview: null}));
+            e.target.value = null; // Reset input file
+            return;
+        }
+        setFormError('');
+        setForm(prev => ({...prev, projectImageFile: file, projectImageUrlPreview: URL.createObjectURL(file)}));
+    } else {
+        setForm(prev => ({...prev, projectImageFile: null, projectImageUrlPreview: null}));
+    }
   };
 
   const handleToggleChange = (fieldName) => {
@@ -78,6 +97,7 @@ const CreateCampaign = () => {
     }
   };
 
+  // ... (fetchMahasiswaInfoForAnggota, handleCurrentAnggotaNimChange, handleAddAnggotaKeTim, removeAnggotaTim tetap sama seperti di ) ...
   const fetchMahasiswaInfoForAnggota = useCallback(async (nimToFetch) => {
     if (!nimToFetch || nimToFetch.length < 3) {
         setCurrentAnggotaInfo({ nama: '', error: nimToFetch ? 'NIM terlalu pendek' : null, isLoading: false });
@@ -126,7 +146,7 @@ const CreateCampaign = () => {
         setCurrentAnggotaNim(''); 
         setCurrentAnggotaInfo({ nama: '', error: null, isLoading: false }); 
     } else {
-        setFormError("NIM anggota tidak valid atau nama belum muncul."); setTimeout(() => setFormError(''), 4000);
+        setFormError("NIM anggota tidak valid, tidak terdaftar, atau nama belum muncul."); setTimeout(() => setFormError(''), 4000);
     }
   };
 
@@ -134,17 +154,14 @@ const CreateCampaign = () => {
     setForm(prevForm => ({ ...prevForm, anggotaTim: prevForm.anggotaTim.filter(anggota => anggota.nim !== nimToRemove) }));
   };
 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(''); setFormError('');
     if (!user) { setFormError("Anda harus login."); return; }
-    if (!form.judul || !form.deskripsi || !form.targetDana || !form.durasiHari || !form.kategoriId || !form.projectImageUrl) {
-        setFormError("Mohon lengkapi semua field yang wajib diisi (*)."); return;
+    if (!form.judul || !form.deskripsi || !form.targetDana || !form.durasiHari || !form.kategoriId || !form.projectImageFile) {
+        setFormError("Mohon lengkapi semua field yang wajib diisi (*), termasuk gambar proyek."); return;
     }
-    // Validasi untuk namaNft dan deskripsiNft dihilangkan karena input fieldnya dihilangkan
-    // if (form.isNftReward && !form.namaNft) { 
-    //     setFormError("Nama NFT Reward wajib diisi."); return; 
-    // }
     if (parseInt(form.durasiHari) < 7 || parseInt(form.durasiHari) > 30) { setFormError("Durasi harus 7-30 hari."); return; }
     const validAnggotaNimsOnly = form.anggotaTim.map(a => a.nim.trim()).filter(nim => nim !== '');
     if (form.isProyekTim && validAnggotaNimsOnly.some(nim => nim === user.nim)) {
@@ -157,43 +174,34 @@ const CreateCampaign = () => {
     const deadlineDate = new Date();
     deadlineDate.setDate(deadlineDate.getDate() + parseInt(form.durasiHari));
     const formattedDeadlineForDB = deadlineDate.toISOString().split('T')[0]; 
-    const deadlineForSC = Math.floor(deadlineDate.getTime() / 1000); 
 
+    const formDataPayload = new FormData();
+    formDataPayload.append('judul', form.judul);
+    formDataPayload.append('deskripsi', form.deskripsi);
+    formDataPayload.append('targetDana', form.targetDana);
+    formDataPayload.append('batasWaktu', formattedDeadlineForDB);
+    formDataPayload.append('kategoriId', form.kategoriId);
+    formDataPayload.append('isNftReward', form.isNftReward.toString()); // Kirim sebagai string
+    formDataPayload.append('isProyekTim', form.isProyekTim.toString()); // Kirim sebagai string
+    if (form.projectImageFile) {
+        formDataPayload.append('projectImageFile', form.projectImageFile);
+    }
+    if (form.isProyekTim) {
+        // ketuaId akan diambil dari req.user di backend
+        formDataPayload.append('anggotaTambahanNims', JSON.stringify(validAnggotaNimsOnly));
+    }
+    
+    // setIsLoading(true); // Akan dihandle oleh authIsLoading dari context jika API call ada di sana
     try {
-        const backendData = {
-            judul: form.judul, deskripsi: form.deskripsi,
-            targetDana: parseFloat(form.targetDana), batasWaktu: formattedDeadlineForDB, 
-            kategoriId: parseInt(form.kategoriId), pemilikId: user.id, 
-            projectImageUrl: form.projectImageUrl, // Gambar utama proyek
-            isNftReward: form.isNftReward,
-            // Jika isNftReward true, nftImageUrl di backend akan diisi dengan projectImageUrl
-            // Tidak perlu mengirim nftRewardImageUrl terpisah dari frontend jika gambarnya sama
-            // namaNft dan deskripsiNft juga tidak lagi dikirim dari form ini
-            isProyekTim: form.isProyekTim,
-            ...(form.isProyekTim && { ketuaId: user.id, anggotaTambahanNims: validAnggotaNimsOnly })
-        };
+        const response = await axios.post(`${API_BASE_URL}/projects/create`, formDataPayload, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        }); 
+        setMessage(response.data.message || "Proyek berhasil diajukan.");
         
-        const response = await axios.post(`${API_BASE_URL}/projects/create`, backendData); 
-        setMessage(response.data.message || "Proyek berhasil diajukan dan menunggu review admin.");
-        
-        // Interaksi Smart Contract (jika masih relevan dan createCampaign ada di context)
-        if (createCampaign && response.data.success && response.data.proyekId) { // Asumsi backend mengembalikan proyekId
-            console.log("Mencoba memanggil Smart Contract untuk proyek ID:", response.data.proyekId);
-            await createCampaign({ 
-                // Sesuaikan parameter ini dengan yang diharapkan oleh fungsi createCampaign di StateContext/SC Anda
-                // Biasanya SC butuh ID proyek dari backend, atau data proyek untuk dibuat on-chain
-                // _projectId: response.data.proyekId, // Contoh jika SC butuh ID dari backend
-                _title: form.judul, 
-                _description: form.deskripsi,
-                _target: ethers.utils.parseUnits(form.targetDana.toString(), 18), 
-                _deadline: deadlineForSC, 
-                _imageURL: form.projectImageUrl,
-                // Jika SC menangani NFT, Anda mungkin perlu mengirim info isNftReward
-                // _isNftReward: form.isNftReward,
-                // _nftImageURL: form.isNftReward ? form.projectImageUrl : "", // Gunakan projectImageUrl untuk NFT
-            });
-            console.log("Panggilan Smart Contract selesai (atau sedang diproses).");
-        }
+        // Jika Anda memindahkan interaksi SC ke backend, bagian ini tidak perlu lagi di frontend
+        // if (createCampaign && response.data.success && response.data.proyekId) {
+        //     await createCampaign({ /* ... parameter SC ... */ });
+        // }
         
         setTimeout(() => navigate('/dashboard'), 3000);
 
@@ -201,16 +209,17 @@ const CreateCampaign = () => {
         console.error("Gagal mengajukan proyek:", err);
         const apiError = err.response?.data?.message || err.message;
         setFormError(apiError || "Terjadi kesalahan saat mengajukan proyek.");
-    }
+    } 
+    // finally { setIsLoading(false); }
   };
   
-  const isLoading = authIsLoading || isSCCreating || isLoadingKategori;
+  // isLoading utama untuk tombol submit dan beberapa field
+  const mainIsLoading = authIsLoading || (typeof isSCCreating !== 'undefined' ? isSCCreating : false) || isLoadingKategori;
 
   return (
     <div className="bg-[#13131a] flex justify-center items-center py-10 px-4 min-h-screen">
         <div className="bg-[#1c1c24] flex flex-col items-center rounded-[20px] sm:p-10 p-6 w-full max-w-3xl mx-auto shadow-2xl">
-        {isLoading && <Loader message={isLoadingKategori ? "Memuat data..." : (isSCCreating || authIsLoading ? "Mengajukan proyek..." : "Memproses...")} />}
-        {/* ... Header Form (sama) ... */}
+        {mainIsLoading && <Loader message={isLoadingKategori ? "Memuat data..." : ( (typeof isSCCreating !== 'undefined' && isSCCreating) || authIsLoading ? "Mengajukan proyek..." : "Memproses...")} />}
         <div className="flex flex-col items-center w-full mb-10">
             <div className="p-4 bg-gradient-to-tr from-[#1dc071] to-[#4acd8d] rounded-full inline-block mb-5 shadow-lg">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="white" className="w-10 h-10">
@@ -221,21 +230,21 @@ const CreateCampaign = () => {
             Mulai Proyek Pendanaan Baru
             </h1>
             <p className="font-epilogue font-normal text-sm text-[#808191] mt-2 text-center max-w-md">
-            Isi detail proyek Anda di bawah ini untuk memulai penggalangan dana.
+            Isi detail proyek Anda di bawah ini untuk memulai penggalangan dana. Berikan gambar dengan rasio 4:3 (minimal 800x600 piksel) dan ukuran file maksimal 2MB.
             </p>
         </div>
 
         <form onSubmit={handleSubmit} className="w-full flex flex-col gap-6">
             {/* ... Field Judul, Target Dana, Deskripsi, Kategori, Durasi (Sama) ... */}
             <div className="grid md:grid-cols-2 gap-6">
-                <FormField labelName="Judul Proyek *" placeholder="Tulis judul yang menarik" inputType="text" name="judul" value={form.judul} handleChange={(e) => handleFormFieldChange('judul', e)} isRequired={true} styles="text-white" disabled={isLoading}/>
-                <FormField labelName="Target Dana (USDT)" placeholder="Contoh: 100" inputType="number" name="targetDana" value={form.targetDana} handleChange={(e) => handleFormFieldChange('targetDana', e)} isRequired={true} styles="text-white" disabled={isLoading}/>
+                <FormField labelName="Judul Proyek" placeholder="Tulis judul yang menarik" inputType="text" name="judul" value={form.judul} handleChange={(e) => handleInputChange('judul', e)} isRequired={true} styles="text-white" disabled={mainIsLoading}/>
+                <FormField labelName="Target Dana (USDT)" placeholder="Contoh: 100" inputType="number" name="targetDana" value={form.targetDana} handleChange={(e) => handleInputChange('targetDana', e)} isRequired={true} styles="text-white" disabled={mainIsLoading}/>
             </div>
-            <FormField labelName="Deskripsi Proyek *" placeholder="Ceritakan detail tentang proyek Anda" isTextArea name="deskripsi" value={form.deskripsi} handleChange={(e) => handleFormFieldChange('deskripsi', e)} isRequired={true} styles="text-white" disabled={isLoading}/>
+            <FormField labelName="Deskripsi Proyek" placeholder="Ceritakan detail tentang proyek Anda" isTextArea name="deskripsi" value={form.deskripsi} handleChange={(e) => handleInputChange('deskripsi', e)} isRequired={true} styles="text-white" disabled={mainIsLoading}/>
             <div className="grid md:grid-cols-2 gap-6">
             <div>
                 <label htmlFor="kategoriId" className="font-epilogue font-medium text-[14px] leading-[22px] text-[#808191] mb-[10px] block">Kategori Proyek <span className="text-red-400">*</span></label>
-                <select name="kategoriId" id="kategoriId" value={form.kategoriId} onChange={(e) => handleFormFieldChange('kategoriId', e)} required disabled={isLoadingKategori || isLoading} className="py-3 sm:px-5 px-4 outline-none border-[1px] border-[#3a3a43] bg-transparent font-epilogue text-white text-[14px] placeholder:text-[#4b5264] rounded-[10px] w-full focus:border-[#4acd8d] transition-colors">
+                <select name="kategoriId" id="kategoriId" value={form.kategoriId} onChange={(e) => handleInputChange('kategoriId', e)} required disabled={isLoadingKategori || mainIsLoading} className="py-3 sm:px-5 px-4 outline-none border-[1px] border-[#3a3a43] bg-transparent font-epilogue text-white text-[14px] placeholder:text-[#4b5264] rounded-[10px] w-full focus:border-[#4acd8d] transition-colors">
                     <option value="" disabled>Pilih Kategori</option>
                     {isLoadingKategori && <option value="" disabled>Memuat kategori...</option>}
                     {kategoriList.map(kat => (<option key={kat.id_kategori} value={kat.id_kategori}>{kat.nama_kategori}</option>))}
@@ -243,22 +252,35 @@ const CreateCampaign = () => {
             </div>
             <div>
                 <label htmlFor="durasiHari" className="font-epilogue font-medium text-[14px] leading-[22px] text-[#808191] mb-[10px] block">Durasi Penggalangan Dana <span className="text-red-400">*</span></label>
-                <select name="durasiHari" id="durasiHari" value={form.durasiHari} onChange={(e) => handleFormFieldChange('durasiHari', e)} required disabled={isLoading} className="py-3 sm:px-5 px-4 outline-none border-[1px] border-[#3a3a43] bg-transparent font-epilogue text-white text-[14px] placeholder:text-[#4b5264] rounded-[10px] w-full focus:border-[#4acd8d] transition-colors">
+                <select name="durasiHari" id="durasiHari" value={form.durasiHari} onChange={(e) => handleInputChange('durasiHari', e)} required disabled={mainIsLoading} className="py-3 sm:px-5 px-4 outline-none border-[1px] border-[#3a3a43] bg-transparent font-epilogue text-white text-[14px] placeholder:text-[#4b5264] rounded-[10px] w-full focus:border-[#4acd8d] transition-colors">
                     {[7, 14, 21, 30].map(hari => ( <option key={hari} value={hari}>{hari} hari</option> ))}
                 </select>
             </div>
             </div>
-            <FormField 
-                labelName="URL Gambar Utama Proyek *" 
-                placeholder="https://urlgambarproyek.com/gambar.jpg" 
-                inputType="url" 
-                name="projectImageUrl" 
-                value={form.projectImageUrl} 
-                handleChange={(e) => handleFormFieldChange('projectImageUrl', e)} 
-                isRequired={true} 
-                styles="text-white" 
-                disabled={isLoading}
-            />
+            
+            {/* Input File untuk Gambar Utama Proyek */}
+            <div>
+                <label htmlFor="projectImageFile" className="font-epilogue font-medium text-[14px] leading-[22px] text-[#808191] mb-[10px] block">
+                    Gambar Utama Proyek <span className="text-red-400">*</span> 
+                    <span className="text-xs block text-gray-400 mt-1">Rasio 4:3 direkomendasikan (min. 800x600px). Maks 2MB (JPG/PNG/GIF).</span>
+                </label>
+                <input 
+                    type="file" 
+                    id="projectImageFile"
+                    name="projectImageFile"
+                    accept="image/png, image/jpeg, image/jpg, image/gif"
+                    onChange={handleFileChange}
+                    required
+                    className="block w-full text-sm text-slate-400 file:mr-4 file:py-2.5 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#4acd8d] file:text-black hover:file:bg-green-400 disabled:opacity-50 cursor-pointer"
+                    disabled={mainIsLoading}
+                />
+                {form.projectImageUrlPreview && (
+                    <div className="mt-4 p-2 border border-dashed border-gray-600 rounded-lg inline-block bg-[#13131a]">
+                        <p className="text-xs text-[#808191] mb-1 text-center">Preview Gambar Proyek:</p>
+                        <img src={form.projectImageUrlPreview} alt="Preview Gambar Proyek" className="max-w-xs h-auto max-h-48 rounded-md object-contain" />
+                    </div>
+                )}
+            </div>
 
             {/* Opsi Tim Proyek (Sama seperti sebelumnya) */}
             <div className="mt-4 p-6 bg-[#13131a] rounded-[10px] border border-gray-700 shadow-md">
@@ -268,12 +290,11 @@ const CreateCampaign = () => {
                         name="isProyekTim"
                         checked={form.isProyekTim}
                         onChange={() => handleToggleChange('isProyekTim')}
-                        disabled={isLoading}
+                        disabled={mainIsLoading}
                     />
                 </div>
                 {form.isProyekTim && (
                     <div className="space-y-6 pl-2 animate-fadeIn border-t border-gray-700 pt-4 mt-4">
-                        {/* ... (Tampilan Ketua Tim dan Anggota Tim sama seperti sebelumnya) ... */}
                          <div className="p-4 bg-[#1c1c24] rounded-lg shadow-md">
                             <label className="font-epilogue font-medium text-[14px] leading-[22px] text-[#808191] mb-[8px] block">Ketua Tim (Anda)</label>
                             <div className="flex items-center gap-4 p-3 bg-[#13131a] rounded-md cursor-not-allowed opacity-90">
@@ -300,7 +321,7 @@ const CreateCampaign = () => {
                                                 <p className="font-epilogue text-xs text-gray-400">{anggota.nim}</p>
                                             </div>
                                         </div>
-                                        <CustomButton btnType="button" title="Hapus" styles="bg-red-600 hover:bg-red-700 text-xs px-3 py-1.5 rounded-md" handleClick={() => removeAnggotaTim(anggota.nim)} disabled={isLoading}/>
+                                        <CustomButton btnType="button" title="Hapus" styles="bg-red-600 hover:bg-red-700 text-xs px-3 py-1.5 rounded-md" handleClick={() => removeAnggotaTim(anggota.nim)} disabled={mainIsLoading}/>
                                     </div>
                                 ))}
                             </div>
@@ -311,8 +332,8 @@ const CreateCampaign = () => {
                                     Tambah Anggota (Masukkan NIM):
                                 </label>
                                 <div className="flex items-start gap-3">
-                                    <FormField placeholder="Ketik NIM Anggota" inputType="text" value={currentAnggotaNim} handleChange={handleCurrentAnggotaNimChange} styles="text-white text-sm !py-2.5 bg-[#1c1c24] border-[#3a3a43] flex-1" disabled={isLoading} noLabel={true}/>
-                                    <CustomButton btnType="button" title="Tambahkan" styles={`bg-blue-600 hover:bg-blue-700 text-xs px-4 py-2.5 rounded-md self-stretch ${(!currentAnggotaInfo.nama || currentAnggotaInfo.error || currentAnggotaInfo.isLoading) ? 'opacity-50 cursor-not-allowed' : ''}`} handleClick={handleAddAnggotaKeTim} disabled={!currentAnggotaInfo.nama || currentAnggotaInfo.error || currentAnggotaInfo.isLoading || isLoading}/>
+                                    <FormField placeholder="Ketik NIM Anggota" inputType="text" value={currentAnggotaNim} handleChange={handleCurrentAnggotaNimChange} styles="text-white text-sm !py-2.5 bg-[#1c1c24] border-[#3a3a43] flex-1" disabled={mainIsLoading} noLabel={true}/>
+                                    <CustomButton btnType="button" title="Tambahkan" styles={`bg-blue-600 hover:bg-blue-700 text-xs px-4 py-2.5 rounded-md self-stretch ${(!currentAnggotaInfo.nama || currentAnggotaInfo.error || currentAnggotaInfo.isLoading) ? 'opacity-50 cursor-not-allowed' : ''}`} handleClick={handleAddAnggotaKeTim} disabled={!currentAnggotaInfo.nama || currentAnggotaInfo.error || currentAnggotaInfo.isLoading || mainIsLoading}/>
                                 </div>
                                 {currentAnggotaInfo.isLoading && <p className="text-xs text-yellow-400 animate-pulse mt-2 ml-1">Mencari NIM...</p>}
                                 {currentAnggotaInfo.error && <p className="text-xs text-red-400 mt-2 ml-1">{currentAnggotaInfo.error}</p>}
@@ -326,22 +347,29 @@ const CreateCampaign = () => {
 
             {/* Opsi NFT Reward - Disederhanakan */}
             <div className="mt-4 p-6 bg-[#13131a] rounded-[10px] border border-gray-700 shadow-md">
-                <div className="flex items-center justify-between mb-0"> {/* mb-0 jika tidak ada konten di bawahnya saat tidak aktif */}
+                <div className="flex items-center justify-between">
                      <ToggleSwitch 
                         label="Tawarkan NFT Reward untuk Donatur?"
                         name="isNftReward"
                         checked={form.isNftReward}
                         onChange={() => handleToggleChange('isNftReward')}
-                        disabled={isLoading}
+                        disabled={mainIsLoading}
                     />
                 </div>
                 {form.isNftReward && (
-                    <div className="space-y-4 pl-2 animate-fadeIn border-t border-gray-700 pt-4 mt-4">
+                    <div className="space-y-3 pl-2 animate-fadeIn border-t border-gray-700 pt-4 mt-4">
                         <p className="font-epilogue text-sm text-[#b2b3bd]">
-                            Jika diaktifkan, gambar utama proyek (<span className="font-semibold text-white">{form.projectImageUrl || "belum diisi"}</span>) akan digunakan sebagai gambar untuk NFT reward.
+                            Jika diaktifkan, gambar utama proyek yang Anda unggah akan digunakan sebagai gambar untuk NFT reward.
                         </p>
-                        {/* Tidak ada input field lagi untuk URL gambar NFT terpisah */}
-                        {/* Input Nama NFT dan Deskripsi NFT juga dihilangkan dari UI */}
+                        {form.projectImageUrlPreview && (
+                             <div className="mt-2">
+                                <p className="text-xs text-[#808191] mb-1">Preview Gambar (akan digunakan untuk NFT):</p>
+                                <img src={form.projectImageUrlPreview} alt="Preview Gambar NFT" className="w-32 h-32 rounded-lg object-cover border border-[#3a3a43]" />
+                            </div>
+                        )}
+                         {!form.projectImageUrlPreview && (
+                            <p className="text-xs text-yellow-500">Unggah gambar utama proyek terlebih dahulu untuk melihat preview NFT.</p>
+                         )}
                     </div>
                 )}
             </div>
@@ -349,9 +377,9 @@ const CreateCampaign = () => {
             <div className="flex justify-center items-center mt-10">
             <CustomButton 
                 btnType="submit"
-                title={isLoading ? "Mengajukan..." : "Ajukan Proyek Sekarang"}
+                title={mainIsLoading ? "Mengajukan..." : "Ajukan Proyek Sekarang"}
                 styles="bg-gradient-to-r from-[#1dc071] to-[#4acd8d] hover:from-green-500 hover:to-teal-500 px-10 py-3 text-lg rounded-[10px] shadow-lg"
-                disabled={isLoading}
+                disabled={mainIsLoading}
             />
             </div>
         </form>
