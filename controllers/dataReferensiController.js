@@ -57,14 +57,7 @@ exports.getMahasiswaInfoByNim = async (req, res, next) => {
 
     if (!mahasiswa) {
       // Jika tidak ditemukan di tabel Mahasiswa, coba cari di MahasiswaReferensi
-      const mahasiswaRef = await MahasiswaReferensi.findOne({
-        where: { nim: nim.trim() },
-        attributes: ['nim', 'namaLengkap', 'emailKampus'],
-      });
-
-      if (!mahasiswaRef) {
-        return res.status(404).json({ success: false, message: 'Mahasiswa dengan NIM tersebut tidak ditemukan.' });
-      }
+      return res.status(404).json({ success: false, message: 'Mahasiswa dengan NIM tersebut tidak terdaftar di sistem IdeaFund.' });
       // Jika ditemukan di referensi tapi belum punya akun di sistem, Anda bisa putuskan responsnya.
       // Untuk sekarang, kita anggap ini valid untuk ditampilkan namanya.
       return res.status(200).json({ 

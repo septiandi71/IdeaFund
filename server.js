@@ -5,13 +5,12 @@ const cors = require('cors');
 const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const cookieParser = require('cookie-parser');
+const path = require('path'); // Impor modul path
 const db = require('./models'); 
 
-// Impor Rute
 const authRoutes = require('./routes/authRoutes');
 const dataReferensiRoutes = require('./routes/dataReferensiRoutes');
-const projectRoutes = require('./routes/projectRoutes'); // <-- BARU: Impor rute proyek
-// const adminRoutes = require('./routes/adminRoutes');
+const projectRoutes = require('./routes/projectRoutes'); 
 
 const app = express();
 
@@ -44,6 +43,12 @@ app.use(session({
 }));
 sessionStore.sync(); 
 
+// --- BARIS BARU: Sajikan folder 'public' sebagai folder statis ---
+// Ini akan membuat file di dalam folder 'public' bisa diakses dari URL
+// Contoh: http://localhost:3001/uploads/projects/namafile.jpg
+app.use(express.static(path.join(__dirname, 'public')));
+
+
 // Routes
 app.get('/', (req, res) => {
   res.send('API Backend IBIK Crowdfunding Simulator Aktif!');
@@ -51,8 +56,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/data', dataReferensiRoutes);
-app.use('/api/projects', projectRoutes); // <-- BARU: Daftarkan rute proyek
-// app.use('/api/admin', adminRoutes); 
+app.use('/api/projects', projectRoutes); 
 
 // Global Error Handler
 app.use((err, req, res, next) => {
