@@ -11,6 +11,9 @@ const db = require('./models');
 const authRoutes = require('./routes/authRoutes');
 const dataReferensiRoutes = require('./routes/dataReferensiRoutes');
 const projectRoutes = require('./routes/projectRoutes'); 
+const profileRoutes = require('./routes/profileRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+
 
 const app = express();
 
@@ -57,6 +60,8 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/data', dataReferensiRoutes);
 app.use('/api/projects', projectRoutes); 
+app.use('/api/profile', profileRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

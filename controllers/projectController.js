@@ -67,13 +67,15 @@ exports.createProject = async (req, res, next) => {
 exports.getDashboardFeed = async (req, res, next) => {
   try {
     if (!req.user) {
-        const error = new Error('Tidak terautentikasi.');
-        error.statusCode = 401;
-        throw error;
+      const error = new Error('Tidak terautentikasi.');
+      error.statusCode = 401;
+      throw error;
     }
+
     const feedData = await projectService.getDashboardProjectFeed(req.user);
     res.status(200).json(feedData);
   } catch (error) {
+    console.error('Error di controller getDashboardFeed:', error);
     next(error);
   }
 };
@@ -95,9 +97,8 @@ exports.getUserProjects = async (req, res, next) => {
     const queryParams = {
         page: req.query.page || 1,
         limit: req.query.limit || 5, // Default 5 proyek per halaman untuk "Proyek Saya"
-        status: req.query.status, // Pengguna bisa filter status proyeknya sendiri
     };
-
+    
     const projectsData = await projectService.getMyProjects(req.user.id, queryParams);
     res.status(200).json(projectsData);
   } catch (error) {
@@ -123,5 +124,17 @@ exports.getAllActiveProjects = async (req, res, next) => {
     res.status(200).json(projectsData);
   } catch (error) {
     next(error);
+  }
+};
+
+exports.getProjectById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const project = await projectService.getProjectById(id);
+
+    res.status(200).json(project);
+  } catch (error) {
+    console.error('Error di controller getProjectById:', error);
+    res.status(500).json({ message: error.message || 'Gagal mengambil detail proyek.' });
   }
 };

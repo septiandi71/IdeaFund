@@ -3,12 +3,17 @@ const { Model, DataTypes } = require('sequelize');
 module.exports = (sequelize) => {
   class Donatur extends Model {
     static associate(models) {
-      // Jika Transaksi memiliki FK donaturId
-      Donatur.hasMany(models.Transaksi, { foreignKey: 'donaturId', sourceKey: 'id', as: 'transaksiDonasi' });
+      // Relasi ke Transaksi sebagai target user
+      Donatur.hasMany(models.Transaksi, { foreignKey: 'targetUserId', as: 'transaksiSebagaiTarget' });
     }
   }
   Donatur.init({
-    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true, allowNull: false },
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+      allowNull: false
+    },
     namaLengkap: { type: DataTypes.STRING(255), allowNull: false },
     email: { type: DataTypes.STRING(255), allowNull: false, unique: true, validate: { isEmail: true } },
     walletAddress: { type: DataTypes.STRING(42), allowNull: false, unique: true },
@@ -17,7 +22,7 @@ module.exports = (sequelize) => {
   }, {
     sequelize,
     modelName: 'Donatur',
-    tableName: 'Donatur' // Plural
+    tableName: 'Donatur'
   });
   return Donatur;
 };

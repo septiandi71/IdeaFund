@@ -114,68 +114,48 @@ async function getDashboardProjectFeed(user) {
   if (!user || !user.id || !user.role) {
     throw new Error('Informasi pengguna tidak lengkap untuk mengambil feed dashboard.');
   }
-  const limit = 3; 
+
   try {
     if (user.role === 'mahasiswa') {
-      const myLatestProjects = await Proyek.findAll({
+      // Hitung jumlah proyek yang diajukan oleh user
+      const totalSubmittedProjects = await Proyek.count({
         where: { pemilikId: user.id },
-        order: [['createdAt', 'DESC']],
-        limit: limit,
-        include: [
-          { model: Kategori, as: 'kategori', attributes: ['nama_kategori'] }, // Menggunakan model Kategori
-          { model: Mahasiswa, as: 'pemilik', attributes: ['id', 'namaLengkap', 'nim'] } 
-        ]
       });
-      const otherActiveProjects = await Proyek.findAll({
-        where: { 
-          status: 'AKTIF',
-          pemilikId: { [Op.ne]: user.id } 
-        },
-        order: [['createdAt', 'DESC']],
-        limit: limit,
-        include: [
-          { model: Kategori, as: 'kategori', attributes: ['nama_kategori'] }, // Menggunakan model Kategori
-          { model: Mahasiswa, as: 'pemilik', attributes: ['id', 'namaLengkap', 'nim'] }
-        ]
+
+      // Hitung jumlah proyek aktif oleh user
+      const totalActiveProjects = await Proyek.count({
+        where: { pemilikId: user.id, status: 'AKTIF' },
       });
-      return { /* ... */ }; // Sisa respons sama
-    } else if (user.role === 'donatur') {
-      const activeProjects = await Proyek.findAll({
-        where: { status: 'AKTIF' },
-        order: [['danaTerkumpul', 'DESC'], ['createdAt', 'DESC']],
-        limit: limit * 2, 
-        include: [
-          { model: Kategori, as: 'kategori', attributes: ['nama_kategori'] }, // Menggunakan model Kategori
-          { model: Mahasiswa, as: 'pemilik', attributes: ['id', 'namaLengkap', 'nim'] }
-        ]
+
+      // Hitung total dana terkumpul dari semua proyek user
+      const totalFundsRaised = await Proyek.sum('danaTerkumpul', {
+        where: { pemilikId: user.id },
       });
-      return { titleSection1: "Proyek Butuh Dukungan", projectsSection1: activeProjects };
+
+      return {
+        totalSubmittedProjects,
+        totalActiveProjects,
+        totalFundsRaised: totalFundsRaised || 0, // Jika null, kembalikan 0
+      };
     } else if (user.role === 'admin') {
-      const pendingReviewProjects = await Proyek.findAll({
-        where: { status: 'PENDING_REVIEW' },
-        order: [['createdAt', 'ASC']], 
-        limit: limit,
-        include: [
-          { model: Kategori, as: 'kategori', attributes: ['nama_kategori'] }, // Menggunakan model Kategori
-          { model: Mahasiswa, as: 'pemilik', attributes: ['id', 'namaLengkap', 'nim'] }
-        ]
-      });
-      const recentlyActiveProjects = await Proyek.findAll({
+      // Statistik untuk admin
+      const totalProjects = await Proyek.count();
+      const totalActiveProjects = await Proyek.count({
         where: { status: 'AKTIF' },
-        order: [['createdAt', 'DESC']],
-        limit: limit,
-        include: [
-          { model: Kategori, as: 'kategori', attributes: ['nama_kategori'] }, // Menggunakan model Kategori
-          { model: Mahasiswa, as: 'pemilik', attributes: ['id', 'namaLengkap', 'nim'] }
-        ]
       });
-      return { /* ... */ }; // Sisa respons sama
+      const totalFundsRaised = await Proyek.sum('danaTerkumpul');
+
+      return {
+        totalProjects,
+        totalActiveProjects,
+        totalFundsRaised: totalFundsRaised || 0,
+      };
     } else {
-      return { titleSection1: "Proyek Tersedia", projectsSection1: [] };
+      throw new Error('Peran pengguna tidak valid untuk dashboard feed.');
     }
   } catch (error) {
-    console.error("Error di service getDashboardProjectFeed:", error);
-    throw new Error(error.message || 'Gagal mengambil feed proyek untuk dashboard.');
+    console.error('Error di service getDashboardProjectFeed:', error);
+    throw new Error(error.message || 'Gagal mengambil data dashboard.');
   }
 }
 
@@ -255,17 +235,14 @@ async function getAllPublicActiveProjects(queryParams) {
 }
 
 async function getMyProjects(userId, queryParams) {
+  console.log(userId);
   if (!userId) {
     throw new Error('User ID diperlukan untuk mengambil proyek saya.');
   }
-  const { page = 1, limit = 3, status } = queryParams; 
+  const { page = 1, limit = 3 } = queryParams; 
   const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
   let whereClause = { pemilikId: userId }; 
-  
-  if (status && status !== '' && status !== 'SEMUA') {
-    whereClause.status = status;
-  }
 
   try {
     const { count, rows } = await Proyek.findAndCountAll({
@@ -296,10 +273,56 @@ async function getMyProjects(userId, queryParams) {
       ],
       distinct: true,
     });
-    return { /* ... (sama seperti sebelumnya) ... */ };
+    return { 
+        totalPages: Math.ceil(count / parseInt(limit, 10)),
+        currentPage: parseInt(page, 10),
+        totalProjects: count,
+        projects: rows
+     };
   } catch (error) {
     console.error("Error di service getMyProjects:", error);
     throw new Error(error.message || 'Gagal mengambil daftar proyek Anda.');
+  }
+}
+
+async function getProjectById(projectId) {
+  try {
+    const project = await Proyek.findOne({
+      where: { id: projectId },
+      include: [
+        {
+          model: Tim,
+          as: 'timProyek',
+          include: [
+            {
+              model: Mahasiswa,
+              as: 'ketuaTim',
+              attributes: ['id', 'namaLengkap', 'nim'],
+            },
+            {
+              model: Mahasiswa,
+              as: 'anggotaList',
+              through: { attributes: [] }, // Jangan ambil data dari tabel junction
+              attributes: ['id', 'namaLengkap', 'nim'],
+            },
+          ],
+        },
+        {
+          model: Mahasiswa,
+          as: 'pemilik',
+          attributes: ['id', 'namaLengkap', 'nim'],
+        },
+      ],
+    });
+
+    if (!project) {
+      throw new Error('Proyek tidak ditemukan.');
+    }
+
+    return project;
+  } catch (error) {
+    console.error('Error di service getProjectById:', error);
+    throw new Error(error.message || 'Gagal mengambil detail proyek.');
   }
 }
 
@@ -307,5 +330,6 @@ module.exports = {
   createNewProject,
   getDashboardProjectFeed,
   getAllPublicActiveProjects,
-  getMyProjects
+  getMyProjects,
+  getProjectById
 };

@@ -1,7 +1,7 @@
 'use strict';
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Transaksi', { // Singular
+    await queryInterface.createTable('Transaksi', {
       id: {
         allowNull: false,
         primaryKey: true,
@@ -12,15 +12,17 @@ module.exports = {
         type: Sequelize.UUID,
         allowNull: false,
         references: { model: 'Proyek', key: 'id' },
-        onUpdate: 'CASCADE', onDelete: 'CASCADE'
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
-      donaturId: { // FK ke Donatur.id, bisa NULL jika donasi anonim (tapi kita punya registrasi donatur)
+      targetUserId: { // FK ke Mahasiswa.id atau Donatur.id
         type: Sequelize.UUID,
-        allowNull: true, // Set false jika setiap donasi HARUS dari donatur terdaftar
-        references: { model: 'Donatur', key: 'id' },
-        onUpdate: 'CASCADE', onDelete: 'SET NULL'
+        allowNull: true, // Bisa null untuk transaksi tanpa target user tertentu
+        references: { model: 'Mahasiswa', key: 'id' }, // Default ke Mahasiswa
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
       },
-      donaturWallet: { // Bisa untuk mencatat wallet aktual yang berinteraksi jika berbeda atau sebagai tambahan
+      targetUserWallet: { // Wallet tujuan transaksi
         type: Sequelize.STRING(42),
         allowNull: false
       },
