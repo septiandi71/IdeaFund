@@ -51,8 +51,8 @@ export const StateContextProvider = ({ children }) => {
         // params: [],
         // Karena getCampaigns mengembalikan array struct, signaturenya perlu tepat
         // Untuk sementara, kita akan coba dengan signature yang lebih umum dan Anda perlu sesuaikan
-        method: `getCampaigns`, // Jika ABI sudah ter-resolve oleh Thirdweb dari dashboard
         params: params,
+        // Baris di atas adalah duplikat dan telah dihapus/dikomentari untuk memperbaiki error.
       });
       return data;
     } catch (error) {

@@ -110,18 +110,24 @@ const ExploreCampaignPage = () => {
       setIsLoadingMyProjects(true);
       setMyProjectsError('');
       try {
-        const params = { page, limit: projectsPerPageMy };
-        const response = await axios.get(`${API_BASE_URL}/projects/my`, { params });
+        const token = localStorage.getItem('token'); // Ambil token dari local storage
+        const params = { page, limit: 5 }; // Pastikan parameter sesuai
+        const response = await axios.get(`${API_BASE_URL}/projects/my`, {
+          params,
+          headers: {
+            Authorization: `Bearer ${token}`, // Sertakan token di header Authorization
+          },
+        });
         setMyProjects(response.data.projects || []);
         setTotalMyProjectsPages(response.data.totalPages || 1);
         setCurrentMyProjectsPage(response.data.currentPage || 1);
       } catch (err) {
-        setMyProjectsError(err.response?.data?.message || "Tidak dapat memuat proyek Anda.");
+        setMyProjectsError(err.response?.data?.message || 'Tidak dapat memuat proyek Anda.');
       } finally {
         setIsLoadingMyProjects(false);
       }
     }
-  }, [user, projectsPerPageMy]);
+  }, [user]);
 
   useEffect(() => {
     if (user && user.role === 'mahasiswa') {
@@ -172,6 +178,18 @@ const ExploreCampaignPage = () => {
   if (authIsLoading && !user) { 
     return <div className="flex justify-center items-center min-h-[calc(100vh-200px)]"><Loader message="Memverifikasi sesi..." /></div>;
   }
+
+  // Contoh penyimpanan token setelah login
+  const handleLogin = async (credentials) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, credentials);
+      const { token } = response.data;
+      localStorage.setItem('token', token); // Simpan token di local storage
+      setUser(response.data.user); // Set user di context
+    } catch (error) {
+      console.error('Login gagal:', error);
+    }
+  };
 
   return (
     <div className="animate-fadeIn p-4 md:p-0 space-y-10">

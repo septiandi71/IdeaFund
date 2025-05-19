@@ -41,8 +41,8 @@ const ProjectCard = ({ project, handleClick }) => {
   const danaTerkumpul = parseFloat(project.danaTerkumpul) || 0;
   const targetDana = parseFloat(project.targetDana) || 1; 
   
-  const danaTerkumpulFormatted = `Rp ${danaTerkumpul.toLocaleString('id-ID', {maximumFractionDigits:0})}`;
-  const targetDanaFormatted = `Rp ${targetDana.toLocaleString('id-ID', {maximumFractionDigits:0})}`;
+  const danaTerkumpulFormatted = `$USDT ${danaTerkumpul.toLocaleString('id-ID', {maximumFractionDigits:0})}`;
+  const targetDanaFormatted = `$USDT ${targetDana.toLocaleString('id-ID', {maximumFractionDigits:0})}`;
   const { text: remainingText, isUrgent, isFinished } = daysLeft(project.batasWaktu);
 
   const calculateBarPercentage = (goal, raisedAmount) => {
@@ -61,18 +61,22 @@ const ProjectCard = ({ project, handleClick }) => {
   else if (isFinished && percentage < 100) statusBadgeClasses = 'text-orange-200 bg-orange-500/80';
 
   return (
-    <div 
-      className="flex flex-col sm:flex-row w-full bg-[#1e1e2d] rounded-[12px] shadow-lg overflow-hidden cursor-pointer group transform hover:-translate-y-1 hover:shadow-xl hover:shadow-[#4acd8d]/20 transition-all duration-300 ease-out border border-[#2a2a3a] hover:border-[#4acd8d]/40"
-      onClick={() => handleClick(project)}
-      // Tinggi kartu bisa diatur di sini atau oleh grid parent dengan item-stretch
-      // Untuk layout horizontal, tinggi biasanya ditentukan oleh konten atau gambar.
-      // Kita akan coba buat kontennya yang menentukan tinggi.
+    <div
+      className="flex flex-row w-full max-h-[190px] sm:max-h-[200px] bg-[#1e1e2d] rounded-[12px] shadow-lg overflow-hidden cursor-pointer group transform hover:-translate-y-1 hover:shadow-xl hover:shadow-[#4acd8d]/20 transition-all duration-300 ease-out border border-[#2a2a3a] hover:border-[#4acd8d]/40"
+      onClick={() => handleClick({
+        ...project,
+        ownerName,
+        ownerNim,
+        ownerProdi,
+        // Pass formatted values if needed, or calculate in details page
+        // danaTerkumpulFormatted,
+        // targetDanaFormatted,
+      })}
     >
       {/* Kolom Gambar (Kiri) */}
-      {/* Lebar gambar dibuat lebih kecil dan tetap untuk layout horizontal */}
-      <div className="w-full sm:w-40 md:w-48 lg:w-52 xl:w-56 flex-shrink-0 relative aspect-[4/3] bg-[#13131a] overflow-hidden">
+      <div className="relative w-[140px] sm:w-[170px] h-full bg-[#13131a] overflow-hidden flex-shrink-0">
         <img 
-          src={API_BASE_URL+project.projectImageUrl || `https://via.placeholder.com/400x300/1c1c24/707070?text=${encodeURIComponent(project.judul || 'IdeaFund')}`} 
+          src={project.projectImageUrl ? (API_BASE_URL + project.projectImageUrl.replace(/^\//, '')) : `https://via.placeholder.com/170x200/1c1c24/707070?text=${encodeURIComponent(project.judul || 'IdeaFund')}`} 
           alt={project.judul || "Gambar Proyek"} 
           className="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
         />
@@ -80,53 +84,54 @@ const ProjectCard = ({ project, handleClick }) => {
             {statusText}
         </div>
       </div>
-
-      {/* Kolom Informasi (Kanan) */}
-      <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between"> {/* flex-1 agar mengambil sisa ruang */}
+      
+      {/* Kolom Konten (Kanan) */}
+      <div className="p-3 sm:p-4 flex flex-col justify-between flex-1 overflow-hidden">
+        {/* Bagian Atas Konten */}
         <div>
-            <div className="flex items-center mb-1.5">
-                <CategoryIcon />
-                <p className="font-epilogue font-semibold text-[10px] text-[#808191] uppercase tracking-wider group-hover:text-[#4acd8d] transition-colors">
-                    {project.kategori?.nama_kategori || 'Kategori'}
-                </p>
-            </div>
-            <h3 className="font-epilogue font-bold text-sm md:text-base text-white leading-tight truncate_2_lines mb-1 group-hover:text-slate-100 transition-colors" title={project.judul}>
+          <div className="flex items-center mb-1 sm:mb-1.5">
+            <CategoryIcon />
+            <p className="font-epilogue font-semibold text-[9px] sm:text-[10px] text-[#808191] uppercase tracking-wider group-hover:text-[#4acd8d] transition-colors">
+                {project.kategori?.nama_kategori || 'Kategori'}
+            </p>
+          </div>
+
+          <h3 className="font-epilogue font-bold text-sm sm:text-base text-white leading-tight truncate_2_lines mb-1 sm:mb-2 group-hover:text-slate-100 transition-colors" title={project.judul}>
             {project.judul || "Judul Proyek"}
-            </h3>
-            
-            {/* Info Pemilik */}
-            <div className="flex items-center text-[10px] text-gray-400 mb-2.5">
-                <UserIcon />
-                <span className="font-medium truncate max-w-[150px] sm:max-w-full" title={`${ownerName} (${ownerNim} - ${ownerProdi})`}>
-                    {ownerName} <span className="text-gray-500">({ownerNim} - {ownerProdi})</span>
-                </span>
+          </h3>
+
+          {/* Info Pemilik & Sisa Waktu */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-[9px] sm:text-[10px] text-gray-400 mb-2 sm:mb-2.5">
+            <div 
+              className="flex items-center mb-1 sm:mb-0 sm:mr-2 overflow-hidden" 
+              title={`${ownerName} (${ownerNim} - ${ownerProdi})`}
+            >
+              <UserIcon />
+              <span className="font-medium truncate"> 
+                {ownerName}
+              </span>
             </div>
+            <div className="flex items-center text-[9px] sm:text-[10px] text-[#808191] gap-1 flex-shrink-0">
+              <ClockIcon />
+              <p className={`font-medium ${isUrgent && !isFinished ? 'text-red-400 animate-pulse' : (isFinished ? 'text-gray-500' : 'text-[#b2b3bd]')}`}>{remainingText}</p>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-auto"> {/* Mendorong ke bawah */}
-            {/* Progress Bar & Info Dana */}
-            <div className="w-full mb-1.5">
-                <div className="flex justify-between text-[10px] font-epilogue text-[#808191] mb-0.5">
+        {/* Bagian Bawah Konten (Progress Bar & Info Dana) */}
+        <div className="w-full mt-auto">
+                <div className="flex justify-between text-[9px] sm:text-[10px] font-epilogue text-[#808191] mb-0.5">
                     <span className="font-medium text-[#b2b3bd]">{danaTerkumpulFormatted}</span>
                     <span className="font-semibold text-[#4acd8d]">{percentage.toFixed(0)}%</span>
                 </div>
-                <div className="relative w-full h-[4px] bg-[#3a3a43] rounded-full overflow-hidden"> {/* Bar lebih tipis */}
+                <div className="relative w-full h-[4px] bg-[#3a3a43] rounded-full overflow-hidden">
                     <div 
                         className="absolute h-full bg-gradient-to-r from-[#1dc071] to-[#4acd8d] rounded-full transition-all duration-500 ease-out" 
                         style={{ width: `${percentage}%`}}
                     ></div>
                 </div>
-                 <p className="text-right mt-0.5 font-epilogue text-[9px] text-[#808191]">Target: {targetDanaFormatted}</p>
+                <p className="text-right mt-0.5 font-epilogue text-[8px] sm:text-[9px] text-[#808191]">Target: {targetDanaFormatted}</p>
             </div>
-
-            {/* Sisa Hari */}
-            <div className="flex items-center justify-end text-[10px] text-[#808191] gap-1 mt-1.5">
-                <ClockIcon />
-                <p className={`font-medium ${isUrgent && !isFinished ? 'text-red-400 animate-pulse' : (isFinished ? 'text-gray-500' : 'text-[#b2b3bd]')}`}>
-                    {remainingText}
-                </p>
-            </div>
-        </div>
       </div>
     </div>
   );

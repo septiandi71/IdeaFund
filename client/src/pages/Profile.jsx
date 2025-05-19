@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuthContext } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import { Loader, CustomButton } from '../components'; // Pastikan path ini benar
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Contoh Ikon (Anda bisa menggunakan SVG atau library ikon)
 const ProfileSectionIcon = ({ children, colorClass = "text-[#4acd8d]" }) => (
@@ -15,54 +18,27 @@ const ProfilePage = () => {
   const { user, isLoading: authIsLoading, authError } = useAuthContext();
   const navigate = useNavigate();
 
-  // --- DATA PLACEHOLDER UNTUK SETIAP PERAN ---
-  // Anda akan mengganti ini dengan panggilan API ke backend Anda
-  const [mahasiswaData, setMahasiswaData] = useState({
-    proyekDiajukan: 5,
-    proyekAktif: 2,
-    danaTerkumpulProyeknya: "Rp 12.500.000",
-    proyekTerbaru: [
-      { id: 'p1', judul: 'Aplikasi Edukasi Anak Interaktif', status: 'PENDANAAN_AKTIF' },
-      { id: 'p2', judul: 'Riset Pertanian Organik', status: 'SUKSES_MENUNGGU_VERIFIKASI' },
-    ],
-    riwayatTransaksiSingkat: [
-        { id: 'mt1', tipe: 'PENCAIRAN_DANA', deskripsi: 'Tahap 1 - Aplikasi Edukasi', jumlah: '+ Rp 5.000.000'},
-        { id: 'mt2', tipe: 'DONASI_KELUAR', deskripsi: 'Dukungan untuk "Konservasi Laut"', jumlah: '- Rp 100.000'},
-    ]
-  });
-  const [donaturData, setDonaturData] = useState({
-    totalDonasi: "Rp 2.750.000",
-    proyekDidukung: 7,
-    nftDiterima: 3,
-    donasiTerbaru: [
-        { id: 'd1', proyekJudul: 'Robotik IBIK', jumlah: 'Rp 200.000'},
-        { id: 'd2', proyekJudul: 'Webinar Kewirausahaan', jumlah: 'Rp 150.000'},
-    ]
-  });
-  const [adminData, setAdminData] = useState({
-    totalPenggunaAktif: 150,
-    totalProyekPlatform: 45,
-    proyekMenungguReview: 2,
-    pencairanMenungguVerifikasi: 1,
-  });
-
+  const [profileData, setProfileData] = useState(null);
   const [isLoadingPageData, setIsLoadingPageData] = useState(false);
 
-  // useEffect untuk fetch data spesifik peran jika diperlukan
   useEffect(() => {
-    if (user) {
-      // Contoh:
-      // if (user.role === 'mahasiswa') {
-      //   // fetchMahasiswaProfileData();
-      // } else if (user.role === 'donatur') {
-      //   // fetchDonaturProfileData();
-      // } else if (user.role === 'admin') {
-      //   // fetchAdminProfileData();
-      // }
-      console.log("ProfilePage: User data:", user);
-    }
-  }, [user]);
+    const fetchProfileData = async () => {
+      setIsLoadingPageData(true);
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_BASE_URL}/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setProfileData(response.data);
+      } catch (error) {
+        console.error('Gagal mengambil data profil:', error);
+      } finally {
+        setIsLoadingPageData(false);
+      }
+    };
 
+    if (user) fetchProfileData();
+  }, [user]);
 
   if (authIsLoading || isLoadingPageData) {
     return (
@@ -120,22 +96,22 @@ const ProfilePage = () => {
       </section>
 
       {/* Konten Spesifik Peran */}
-      {user.role === 'mahasiswa' && (
+      {profileData && profileData.role === 'mahasiswa' && (
         <>
           {/* Statistik Mahasiswa */}
           <section className="bg-[#1c1c24] p-6 rounded-xl shadow-lg">
             <h2 className="font-epilogue font-semibold text-xl text-white mb-4 border-b border-gray-700 pb-3">Ringkasan Aktivitas Proyek</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               <div className="bg-[#2c2f32] p-4 rounded-lg text-center shadow">
-                <p className="font-epilogue text-3xl font-bold text-[#4acd8d]">{mahasiswaData.proyekDiajukan}</p>
+                <p className="font-epilogue text-3xl font-bold text-[#4acd8d]">{profileData.totalSubmittedProjects}</p>
                 <p className="font-epilogue text-xs text-[#808191] mt-1">Proyek Diajukan</p>
               </div>
               <div className="bg-[#2c2f32] p-4 rounded-lg text-center shadow">
-                <p className="font-epilogue text-3xl font-bold text-blue-400">{mahasiswaData.proyekAktif}</p>
+                <p className="font-epilogue text-3xl font-bold text-blue-400">{profileData.totalActiveProjects}</p>
                 <p className="font-epilogue text-xs text-[#808191] mt-1">Proyek Menggalang Dana</p>
               </div>
               <div className="bg-[#2c2f32] p-4 rounded-lg text-center shadow">
-                <p className="font-epilogue text-3xl font-bold text-green-400">{mahasiswaData.danaTerkumpulProyeknya}</p>
+                <p className="font-epilogue text-3xl font-bold text-green-400">{`$USDT ${profileData.totalFundsRaised.toLocaleString('id-ID')}`}</p>
                 <p className="font-epilogue text-xs text-[#808191] mt-1">Total Dana Terkumpul (dari Proyek Anda)</p>
               </div>
             </div>
@@ -144,9 +120,9 @@ const ProfilePage = () => {
           {/* Proyek Terbaru Mahasiswa */}
           <section className="bg-[#1c1c24] p-6 rounded-xl shadow-lg">
             <h2 className="font-epilogue font-semibold text-xl text-white mb-4 border-b border-gray-700 pb-3">Proyek Terbaru Saya</h2>
-            {mahasiswaData.proyekTerbaru.length > 0 ? (
+            {profileData.latestProjects.length > 0 ? (
               <div className="space-y-4">
-                {mahasiswaData.proyekTerbaru.map(proyek => (
+                {profileData.latestProjects.map(proyek => (
                   <div key={proyek.id} className="p-4 bg-[#2c2f32] rounded-lg flex justify-between items-center hover:bg-[#3a3a43] transition-colors">
                     <div>
                       <h3 className="font-epilogue font-semibold text-md text-white">{proyek.judul}</h3>
@@ -167,16 +143,16 @@ const ProfilePage = () => {
           {/* Riwayat Transaksi Mahasiswa */}
            <section className="bg-[#1c1c24] p-6 rounded-xl shadow-lg">
             <h2 className="font-epilogue font-semibold text-xl text-white mb-4 border-b border-gray-700 pb-3">Riwayat Transaksi Singkat</h2>
-            {mahasiswaData.riwayatTransaksiSingkat.length > 0 ? (
+            {profileData.recentTransactions.length > 0 ? (
                 <ul className="space-y-3">
-                {mahasiswaData.riwayatTransaksiSingkat.map((item) => (
-                    <li key={item.id} className="p-3 bg-[#2c2f32] rounded-md text-sm">
+                {profileData.recentTransactions.map((trx) => (
+                    <li key={trx.id} className="p-3 bg-[#2c2f32] rounded-md text-sm">
                     <div className="flex justify-between items-center">
-                        <span className={`font-epilogue font-medium ${item.tipe.includes('MASUK') ? 'text-green-400' : 'text-red-400'}`}>{item.tipe.replace(/_/g, ' ')}</span>
-                        <span className="font-epilogue text-xs text-gray-400">{item.tanggal}</span>
+                        <span className={`font-epilogue font-medium ${trx.tipe.includes('MASUK') ? 'text-green-400' : 'text-red-400'}`}>{trx.tipe.replace(/_/g, ' ')}</span>
+                        <span className="font-epilogue text-xs text-gray-400">{new Date(trx.createdAt).toLocaleDateString('id-ID')}</span>
                     </div>
-                    <p className="font-epilogue text-[#b2b3bd] mt-1">{item.deskripsi}</p>
-                    <p className="font-epilogue font-semibold text-white text-right">{item.jumlah}</p>
+                    <p className="font-epilogue text-[#b2b3bd] mt-1">{trx.txHash}</p>
+                    <p className="font-epilogue font-semibold text-white text-right">{`$USDT ${trx.jumlah.toLocaleString('id-ID')}`}</p>
                     </li>
                 ))}
                 </ul>
@@ -188,21 +164,21 @@ const ProfilePage = () => {
         </>
       )}
 
-      {user.role === 'donatur' && (
+      {profileData && profileData.role === 'donatur' && (
         <>
           <section className="bg-[#1c1c24] p-6 rounded-xl shadow-lg">
             <h2 className="font-epilogue font-semibold text-xl text-white mb-4 border-b border-gray-700 pb-3">Ringkasan Aktivitas Donasi</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="bg-[#2c2f32] p-4 rounded-lg text-center shadow">
-                <p className="font-epilogue text-3xl font-bold text-[#8c6dfd]">{donaturData.totalDonasi}</p>
+                <p className="font-epilogue text-3xl font-bold text-[#8c6dfd]">{`$USDT ${profileData.totalDonations.toLocaleString('id-ID')}`}</p>
                 <p className="font-epilogue text-xs text-[#808191] mt-1">Total Donasi Diberikan</p>
               </div>
               <div className="bg-[#2c2f32] p-4 rounded-lg text-center shadow">
-                <p className="font-epilogue text-3xl font-bold text-green-400">{donaturData.proyekDidukung}</p>
+                <p className="font-epilogue text-3xl font-bold text-green-400">{profileData.supportedProjects}</p>
                 <p className="font-epilogue text-xs text-[#808191] mt-1">Proyek Didukung</p>
               </div>
               <div className="bg-[#2c2f32] p-4 rounded-lg text-center shadow">
-                <p className="font-epilogue text-3xl font-bold text-teal-400">{donaturData.nftDiterima}</p>
+                <p className="font-epilogue text-3xl font-bold text-teal-400">{profileData.nftReceived}</p>
                 <p className="font-epilogue text-xs text-[#808191] mt-1">NFT Reward Diterima</p>
               </div>
             </div>
@@ -210,12 +186,12 @@ const ProfilePage = () => {
 
           <section className="bg-[#1c1c24] p-6 rounded-xl shadow-lg">
             <h2 className="font-epilogue font-semibold text-xl text-white mb-4 border-b border-gray-700 pb-3">Donasi Terbaru Anda</h2>
-            {donaturData.donasiTerbaru.length > 0 ? (
+            {profileData.recentDonations.length > 0 ? (
                 <div className="space-y-4">
-                {donaturData.donasiTerbaru.map(donasi => (
+                {profileData.recentDonations.map(donasi => (
                   <div key={donasi.id} className="p-4 bg-[#2c2f32] rounded-lg hover:bg-[#3a3a43] transition-colors">
-                    <h3 className="font-epilogue font-semibold text-md text-white">{donasi.proyekJudul}</h3>
-                    <p className="font-epilogue text-xs text-[#808191]">Jumlah: {donasi.jumlah}</p>
+                    <h3 className="font-epilogue font-semibold text-md text-white">{donasi.proyek.judul}</h3>
+                    <p className="font-epilogue text-xs text-[#808191]">Jumlah: {`$USDT ${donasi.jumlah.toLocaleString('id-ID')}`}</p>
                   </div>
                 ))}
                 <Link to="/history" className="inline-block mt-4">
@@ -228,24 +204,24 @@ const ProfilePage = () => {
         </>
       )}
       
-      {user.role === 'admin' && (
+      {profileData && profileData.role === 'admin' && (
          <section className="bg-[#1c1c24] p-6 rounded-xl shadow-lg">
             <h2 className="font-epilogue font-semibold text-xl text-white mb-4 border-b border-gray-700 pb-3">Ringkasan Sistem</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                 <div className="bg-[#2c2f32] p-4 rounded-lg text-center shadow">
-                    <p className="font-epilogue text-3xl font-bold text-white">{adminData.totalPenggunaAktif}</p>
+                    <p className="font-epilogue text-3xl font-bold text-white">{profileData.totalActiveUsers}</p>
                     <p className="font-epilogue text-xs text-[#808191] mt-1">Pengguna Aktif</p>
                 </div>
                 <div className="bg-[#2c2f32] p-4 rounded-lg text-center shadow">
-                    <p className="font-epilogue text-3xl font-bold text-white">{adminData.totalProyekPlatform}</p>
+                    <p className="font-epilogue text-3xl font-bold text-white">{profileData.totalProjects}</p>
                     <p className="font-epilogue text-xs text-[#808191] mt-1">Total Proyek</p>
                 </div>
                 <div className="bg-[#2c2f32] p-4 rounded-lg text-center shadow">
-                    <p className="font-epilogue text-3xl font-bold text-yellow-400">{adminData.proyekMenungguReview}</p>
+                    <p className="font-epilogue text-3xl font-bold text-yellow-400">{profileData.projectsPendingReview}</p>
                     <p className="font-epilogue text-xs text-[#808191] mt-1">Proyek Review</p>
                 </div>
                 <div className="bg-[#2c2f32] p-4 rounded-lg text-center shadow">
-                    <p className="font-epilogue text-3xl font-bold text-orange-400">{adminData.pencairanMenungguVerifikasi}</p>
+                    <p className="font-epilogue text-3xl font-bold text-orange-400">{profileData.pendingWithdrawals}</p>
                     <p className="font-epilogue text-xs text-[#808191] mt-1">Pencairan Verifikasi</p>
                 </div>
             </div>

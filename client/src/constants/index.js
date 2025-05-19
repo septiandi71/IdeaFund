@@ -28,68 +28,37 @@ export const navlinks = [
     imgUrl: dashboardIcon,
     link: '/dashboard',
     authRequired: true,
-    roles: ['mahasiswa', 'donatur', 'admin'], // Semua peran yang login bisa lihat dashboard
+    allowedRoles: ['mahasiswa', 'donatur', 'admin'], // Semua peran yang login bisa lihat dashboard
   },
   {
     name: 'Ajukan Proyek',
     imgUrl: campaignIcon,
     link: '/create-campaign',
     authRequired: true,
-    roles: ['mahasiswa'], // Hanya mahasiswa
+    allowedRoles: ['mahasiswa'], // Hanya mahasiswa
   },
   {
     name: 'Eksplorasi Proyek',
-    // imgUrl: exploreIcon || searchIcon, // Ganti dengan ikon yang sesuai
-    imgUrl: searchIcon, // Menggunakan ikon search untuk sementara
-    link: '/explore-campaign', // Halaman utama akan jadi tempat eksplorasi untuk user login
+    imgUrl: searchIcon,
+    link: '/explore-campaign',
     authRequired: true,
-    roles: ['mahasiswa', 'donatur', 'admin'],
+    allowedRoles: ['mahasiswa', 'donatur', 'admin'],
   },
   {
     name: 'Profil Saya',
     imgUrl: profileIcon,
-    link: '/profile', // Halaman profil akan menampilkan info, proyek saya (Mhs), riwayat donasi (Donatur)
+    link: '/profile',
     authRequired: true,
-    roles: ['mahasiswa', 'donatur', 'admin'],
+    allowedRoles: ['mahasiswa', 'donatur', 'admin'],
   },
-  // Contoh untuk Admin (jika Anda ingin menambahkannya nanti)
-  // {
-  //   name: 'Manajemen Pengguna',
-  //   imgUrl: usersIcon,
-  //   link: '/admin/users',
-  //   authRequired: true,
-  //   roles: ['admin'],
-  // },
-  // {
-  //   name: 'Verifikasi Proyek',
-  //   imgUrl: verifyIcon,
-  //   link: '/admin/verifications',
-  //   authRequired: true,
-  //   roles: ['admin'],
-  // },
   {
     name: 'Logout',
     imgUrl: logoutIcon,
-    link: '#', // Tidak ada navigasi link, hanya aksi
+    link: '#',
     authRequired: true,
-    roles: ['mahasiswa', 'donatur', 'admin'], 
-    isLogout: true, // Penanda khusus untuk aksi logout
+    allowedRoles: ['mahasiswa', 'donatur', 'admin'],
+    isLogout: true,
   },
-  // Link untuk Guest (jika ingin ditampilkan di mobile drawer Navbar saat belum login)
-  // {
-  //   name: 'Login',
-  //   imgUrl: loginIcon, // Anda perlu ikon ini
-  //   link: '/login',
-  //   authRequired: false,
-  //   roles: ['guest'],
-  // },
-  // {
-  //   name: 'Registrasi',
-  //   imgUrl: registerIcon, // Anda perlu ikon ini
-  //   link: '/register-options',
-  //   authRequired: false,
-  //   roles: ['guest'],
-  // },
 ];
 
 // Ekspor aset lain jika masih digunakan dari sini

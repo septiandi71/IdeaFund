@@ -50,3 +50,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Custom Scrollbar for Donators List */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #4a4a5a;
+  border-radius: 3px;
+}

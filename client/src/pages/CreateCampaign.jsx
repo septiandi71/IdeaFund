@@ -216,9 +216,20 @@ const CreateCampaign = () => {
   // isLoading utama untuk tombol submit dan beberapa field
   const mainIsLoading = authIsLoading || (typeof isSCCreating !== 'undefined' ? isSCCreating : false) || isLoadingKategori;
 
+  useEffect(() => {
+    if (user && user.role !== 'mahasiswa') {
+      // Jika bukan mahasiswa, arahkan ke dashboard
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
+
+  if (!user || user.role !== 'mahasiswa') {
+    return null; // Jangan render apa pun jika pengguna tidak diizinkan
+  }
+
   return (
     <div className="bg-[#13131a] flex justify-center items-center py-10 px-4 min-h-screen">
-        <div className="bg-[#1c1c24] flex flex-col items-center rounded-[20px] sm:p-10 p-6 w-full max-w-3xl mx-auto shadow-2xl">
+        <div className="bg-[#1c1c24] flex flex-col items-center rounded-[20px] sm:p-10 p-6 w-full mx-auto shadow-2xl">
         {mainIsLoading && <Loader message={isLoadingKategori ? "Memuat data..." : ( (typeof isSCCreating !== 'undefined' && isSCCreating) || authIsLoading ? "Mengajukan proyek..." : "Memproses...")} />}
         <div className="flex flex-col items-center w-full mb-10">
             <div className="p-4 bg-gradient-to-tr from-[#1dc071] to-[#4acd8d] rounded-full inline-block mb-5 shadow-lg">

@@ -36,14 +36,8 @@ const Sidebar = () => {
       <div className="flex-1 flex flex-col justify-between items-center bg-[#1c1c24] rounded-[20px] w-[76px] py-4 mt-12">
         <div className="flex flex-col justify-center items-center gap-3">
           {navlinks.map((link) => {
-            // Logika untuk menampilkan link berdasarkan status login dan peran
-            // Ini adalah contoh, sesuaikan dengan 'name' dan 'role' di navlinks Anda
-            if (link.name.toLowerCase() === 'logout' && !user) return null;
-            if (link.name.toLowerCase() === 'create campaign' && (!user || user.role !== 'mahasiswa')) return null;
-            if (link.name.toLowerCase() === 'profile' && !user) return null;
-            // Jika 'payment' adalah dashboard, dan user ada, maka tampilkan
-            // Jika ada link khusus admin, tambahkan:
-            // if (link.forAdmin && user.role !== 'admin') return null;
+            // Periksa apakah peran pengguna diizinkan untuk melihat link ini
+            if (!link.allowedRoles || !link.allowedRoles.includes(user.role)) return null;
 
             return (
               <Icon 
@@ -53,7 +47,7 @@ const Sidebar = () => {
                 isActive={isActive}
                 disabled={link.disabled}
                 handleClick={() => {
-                  if(!link.disabled) {
+                  if (!link.disabled) {
                     setIsActive(link.name);
                     if (link.name.toLowerCase() === 'logout') {
                       logout().then(() => navigate('/'));
