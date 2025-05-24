@@ -96,7 +96,24 @@ async function finalizeMahasiswaRegistration(sessionData, otpInput, walletAddres
     otp: null, 
     otpExpiresAt: null,
   });
-  return { message: 'Registrasi mahasiswa berhasil.', user: { id:newMahasiswa.id, nim: newMahasiswa.nim, namaLengkap: newMahasiswa.namaLengkap, email: newMahasiswa.emailKampus, role: 'mahasiswa', walletAddress: newMahasiswa.walletAddress } };
+
+  // Buat token JWT
+  const token = jwt.sign(
+    { id: newMahasiswa.id, role: 'mahasiswa', email: newMahasiswa.emailKampus },
+    process.env.JWT_SECRET,
+    { expiresIn: '1d' } // Token berlaku 1 hari
+  );
+
+  return { 
+    message: 'Registrasi mahasiswa berhasil.',
+    token,
+    user: { id:newMahasiswa.id, 
+      nim: newMahasiswa.nim, 
+      namaLengkap: newMahasiswa.namaLengkap, 
+      email: newMahasiswa.emailKampus, 
+      role: 'mahasiswa', 
+      walletAddress: newMahasiswa.walletAddress } 
+    };
 }
 
 // --- REGISTRASI DONATUR ---
@@ -147,9 +164,23 @@ async function finalizeDonaturRegistration(sessionData, otpInput, walletAddress)
     otp: null,
     otpExpiresAt: null,
   });
+
+  // Buat token JWT
+  const token = jwt.sign(
+    { id: newDonatur.id, role: 'donatur', email: newDonatur.email },
+    process.env.JWT_SECRET,
+    { expiresIn: '1d' } // Token berlaku 1 hari
+  );
+
   return { 
       message: `Registrasi donatur berhasil.`, 
-      user: { id: newDonatur.id, namaLengkap: newDonatur.namaLengkap, email: newDonatur.email, role: 'donatur', walletAddress: newDonatur.walletAddress } 
+      token,
+      user: { 
+        id: newDonatur.id, 
+        namaLengkap: newDonatur.namaLengkap, 
+        email: newDonatur.email, 
+        role: 'donatur', 
+        walletAddress: newDonatur.walletAddress } 
     };
 }
 

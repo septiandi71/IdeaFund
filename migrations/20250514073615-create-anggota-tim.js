@@ -5,15 +5,29 @@ module.exports = {
     await queryInterface.createTable('AnggotaTim', {
       id: {
         allowNull: false,
-        autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.INTEGER
+        type: Sequelize.UUID,
+        defaultValue: Sequelize.UUIDV4
       },
       timId: {
-        type: Sequelize.UUID
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: {
+          model: 'Tim',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       mahasiswaId: {
-        type: Sequelize.UUID
+        type: Sequelize.UUID,
+        allowNull: false,
+        references: {
+          model: 'Mahasiswa',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       createdAt: {
         allowNull: false,
@@ -25,6 +39,13 @@ module.exports = {
         type: Sequelize.DATE,
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')
       }
+    });
+
+    // Tambahkan unique constraint untuk mencegah mahasiswa menjadi anggota tim yang sama lebih dari sekali
+    await queryInterface.addConstraint('AnggotaTim', {
+      fields: ['timId', 'mahasiswaId'],
+      type: 'unique',
+      name: 'unique_tim_mahasiswa'
     });
   },
   async down(queryInterface, Sequelize) {

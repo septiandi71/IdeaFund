@@ -1,25 +1,33 @@
 'use strict';
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Tim', { // Plural default
+    await queryInterface.createTable('Tim', {
       id: {
         allowNull: false,
         primaryKey: true,
         type: Sequelize.UUID,
         defaultValue: Sequelize.UUIDV4
       },
-      proyekId: { // FK ke Proyek.id
+      proyekId: {
         type: Sequelize.UUID,
         allowNull: false,
-        unique: true, // Satu proyek hanya punya satu tim (jika ada)
-        references: { model: 'Proyek', key: 'id' }, // Tabel Proyek
-        onUpdate: 'CASCADE', onDelete: 'CASCADE'
+        unique: true,
+        references: {
+          model: 'Proyek',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
-      ketuaId: { // FK ke Mahasiswa.id (UUID)
+      ketuaId: {
         type: Sequelize.UUID,
         allowNull: false,
-        references: { model: 'Mahasiswa', key: 'id' }, // Tabel Mahasiswa
-        onUpdate: 'CASCADE', onDelete: 'RESTRICT'
+        references: {
+          model: 'Mahasiswa',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       createdAt: {
         allowNull: false,

@@ -3,17 +3,18 @@ const { Model, DataTypes } = require('sequelize');
 module.exports = (sequelize) => {
   class AnggotaTim extends Model {
     static associate(models) {
-      // Asosiasi ke Tim dan Mahasiswa sudah didefinisikan di model Tim dan Mahasiswa
-      // melalui belongsToMany
+      AnggotaTim.belongsTo(models.Tim, { as: 'tim', foreignKey: 'timId' }); // Relasi ke Tim
+      AnggotaTim.belongsTo(models.Mahasiswa, { as: 'mahasiswa', foreignKey: 'mahasiswaId' }); // Relasi ke Mahasiswa
     }
   }
   AnggotaTim.init({
-    timId: { type: DataTypes.UUID, primaryKey: true, allowNull: false },
-    mahasiswaId: { type: DataTypes.UUID, primaryKey: true, allowNull: false }
+    id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true, allowNull: false },
+    timId: { type: DataTypes.UUID, allowNull: false },
+    mahasiswaId: { type: DataTypes.UUID, allowNull: false }
   }, {
     sequelize,
     modelName: 'AnggotaTim',
-    tableName: 'AnggotaTim' // Plural
+    tableName: 'AnggotaTim'
   });
   return AnggotaTim;
 };

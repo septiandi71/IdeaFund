@@ -1,5 +1,5 @@
 'use strict';
-const { Model } = require('sequelize');
+const { Model } = require('sequelize'); // Hanya impor Model
 module.exports = (sequelize, DataTypes) => {
   class Kategori extends Model {
     static associate(models) {

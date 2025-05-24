@@ -5,11 +5,15 @@ module.exports = (sequelize) => {
     static associate(models) {
       Tim.belongsTo(models.Proyek, { foreignKey: 'proyekId', as: 'proyek' });
       Tim.belongsTo(models.Mahasiswa, { foreignKey: 'ketuaId', as: 'ketuaTim' });
+      
+      // Untuk mendapatkan daftar record AnggotaTim
+      Tim.hasMany(models.AnggotaTim, { as: 'anggotaList', foreignKey: 'timId' });
+      // Untuk mendapatkan daftar Mahasiswa yang menjadi anggota tim ini
       Tim.belongsToMany(models.Mahasiswa, {
-        through: models.AnggotaTim, // tabel junction
-        foreignKey: 'timId', // FK di AnggotaTim yang merujuk ke Tim.id
-        otherKey: 'mahasiswaId', // FK di AnggotaTim yang merujuk ke Mahasiswa.id
-        as: 'anggotaList'
+        through: models.AnggotaTim,
+        foreignKey: 'timId',
+        otherKey: 'mahasiswaId',
+        as: 'anggotaMahasiswa' // Alias ini akan digunakan di include pada getProjectById
       });
     }
   }
@@ -20,7 +24,7 @@ module.exports = (sequelize) => {
   }, {
     sequelize,
     modelName: 'Tim',
-    tableName: 'Tim' // Plural
+    tableName: 'Tim'
   });
   return Tim;
 };
