@@ -5,8 +5,8 @@ import { BrowserRouter as Router } from 'react-router-dom';
 
 // Impor dari SDK Thirdweb yang baru
 import { ThirdwebProvider } from 'thirdweb/react'; 
-import { createThirdwebClient } from 'thirdweb';
 import { Sepolia } from "@thirdweb-dev/chains"; // Impor chain object
+import { client } from './thirdwebClient'; // Impor client yang sudah terpusat
 
 // Asumsi StateContextProvider diekspor dari src/context/index.jsx atau src/context.jsx
 // Untuk tes isolasi, kita bisa komentari ini dulu jika masalah berlanjut
@@ -17,11 +17,12 @@ import './index.css'; // Pastikan Tailwind CSS setup ada di sini
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
-// 1. Definisikan Client ID Anda
-const thirdwebClientId = "8c69441790f9fbaabbb795a921abb3f1"; 
+// 1. Dapatkan Client ID dari environment variable (pengecekan utama ada di thirdwebClient.js)
+const thirdwebClientId = import.meta.env.VITE_THIRDWEB_CLIENT_ID;
 
-if (!thirdwebClientId || thirdwebClientId === "YOUR_CLIENT_ID_PLACEHOLDER") {
-  const errorMessage = "KRITIS: Harap ganti dengan Client ID Thirdweb Anda yang valid di src/main.jsx!";
+// Pengecekan di main.jsx untuk menampilkan pesan error UI jika client ID bermasalah
+if (!thirdwebClientId || thirdwebClientId === "YOUR_CLIENT_ID_PLACEHOLDER" || !client) { // Tambahkan pengecekan !client
+  const errorMessage = "KRITIS: Harap ganti dengan Client ID Thirdweb Anda yang valid";
   console.error(errorMessage);
   // Menampilkan pesan error langsung di halaman jika clientId tidak ada/salah
   document.getElementById('root').innerHTML = 
@@ -33,15 +34,11 @@ if (!thirdwebClientId || thirdwebClientId === "YOUR_CLIENT_ID_PLACEHOLDER") {
   // Hentikan eksekusi lebih lanjut jika clientId tidak ada
   // Ini akan mencegah error "No QueryClient set" jika masalahnya adalah clientId kosong.
 } else {
-  // 2. Buat instance Thirdweb Client HANYA JIKA clientId valid
-  const client = createThirdwebClient({
-    clientId: thirdwebClientId,
-  });
-
+  // 2. Gunakan client yang sudah diimpor
   root.render(
     <React.StrictMode>
-      {/* 3. Lewatkan 'client' ke ThirdwebProvider */}
       <ThirdwebProvider 
+        client={client} // Tambahkan prop client di sini
         activeChain={Sepolia} // Atau chain string seperti "sepolia"
         // Tidak perlu clientId di sini jika sudah menggunakan prop client
         // supportedWallets akan diambil dari client jika sudah dikonfigurasi di sana,

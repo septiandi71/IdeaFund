@@ -3,15 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext'; 
 import { ConnectButton, useActiveAccount } from "thirdweb/react"; 
-import { createThirdwebClient } from "thirdweb";
-import { createWallet } from "thirdweb/wallets"; 
+import { supportedWallets } from '../thirdwebClient'; // Impor supportedWallets
 import { FormField, CustomButton, Loader } from '../components'; 
 
-const thirdwebClientId = "8c69441790f9fbaabbb795a921abb3f1"; // Pastikan ini benar
-const client = createThirdwebClient({ clientId: thirdwebClientId });
-const supportedWallets = [createWallet("io.metamask"), createWallet("com.coinbase.wallet")];
-
-const RegisterMahasiswaPage2Otp = () => {
+// Terima 'client' sebagai prop
+const RegisterMahasiswaPage2Otp = ({ client }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const { 

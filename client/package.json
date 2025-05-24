@@ -10,12 +10,12 @@
   },
   "dependencies": {
     "@thirdweb-dev/chains": "^0.1.120",
-    "@thirdweb-dev/react": "^4.9.4",
+    "axios": "^1.9.0",
     "ethers": "^5.8.0",
     "react": "^18.3",
     "react-dom": "^18.3",
     "react-router-dom": "^7.6.0",
-    "thirdweb": "^5.99.1"
+    "thirdweb": "^5.101.1"
   },
   "devDependencies": {
     "@types/react": "^18.2.56",

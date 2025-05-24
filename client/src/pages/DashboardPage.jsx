@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Loader, CustomButton } from '../components';
 import axios from 'axios'; // Untuk mengambil data statistik dashboard
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Komponen untuk menampilkan satu kartu statistik
 const StatCard = ({ title, value, icon, color = "text-white", iconBgColor = "bg-gray-700" }) => (
@@ -197,6 +197,7 @@ const DonaturDashboardContent = ({ user, navigate }) => {
 const AdminDashboardContent = ({ user, navigate }) => {
   const [stats, setStats] = useState({ totalPengguna: 0, totalProyek: 0, proyekReview: 0, pencairanVerif: 0 });
   const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -219,11 +220,10 @@ const AdminDashboardContent = ({ user, navigate }) => {
         setIsLoadingStats(false);
       }
     };
-
-    if (user) fetchStats();
+    fetchStats();
   }, [user]);
 
-  if (isLoadingStats) return <Loader message="Memuat statistik admin..." />;
+  if (isLoadingStats || isLoadingProjects) return <Loader message="Memuat data..." />;
 
   return (
     <div className="mt-8 space-y-8 animate-fadeInUp">
@@ -233,6 +233,8 @@ const AdminDashboardContent = ({ user, navigate }) => {
         <StatCard title="Proyek Perlu Review" value={stats.proyekReview} icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M10.125 2.25h-4.5c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125v-9M10.125 2.25h.375a9 9 0 0 1 9 9v.375M10.125 2.25A3.375 3.375 0 0 1 13.5 5.625v1.5c0 .621.504 1.125 1.125 1.125h1.5a3.375 3.375 0 0 1 3.375 3.375M9 15l2.25 2.25L15 12" /></svg>} color="text-yellow-400" iconBgColor="bg-yellow-800/30"/>
         <StatCard title="Pencairan Perlu Verifikasi" value={stats.pencairanVerif} icon={<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M11.35 3.836c-.791-.065-1.668-.12-2.552-.12C4.496 3.716 2.25 5.48 2.25 7.875c0 1.988 1.628 3.224 3.914 4.069.66.243 1.156.243 1.817 0A4.5 4.5 0 0 1 12 13.5M12 13.5v7.5M11.35 3.836c.313-.023.626-.039.95-.048.791-.023 1.557.023 2.25.108.636.077 1.217.214 1.739.408M11.35 3.836c-.16.08-.313.168-.457.264m.457-.264c.051.02.1.042.15.064M8.25 15.75h7.5M12 7.5h.008v.008H12V7.5Z" /></svg>} color="text-orange-400" iconBgColor="bg-orange-800/30"/>
       </div>
+
+ 
     </div>
   );
 };

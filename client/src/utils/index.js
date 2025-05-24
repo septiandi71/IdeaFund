@@ -1,8 +1,10 @@
-export const daysLeft = (deadline) => {
-  const difference = new Date(deadline).getTime() - Date.now();
+export const daysLeft = (batasWaktu) => {
+  if (!batasWaktu) return 'Not Active'; // Jika batasWaktu tidak valid, kembalikan 'Not Active'
+
+  const difference = new Date(batasWaktu).getTime() - new Date().getTime();
   const remainingDays = difference / (1000 * 3600 * 24);
 
-  return remainingDays.toFixed(0);
+  return Math.ceil(remainingDays);
 };
 
 export const calculateBarPercentage = (goal, raisedAmount) => {

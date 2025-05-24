@@ -4,30 +4,13 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'; // Tambahkan 
 import { useAuthContext } from '../context/AuthContext'; 
 
 // Impor dari Thirdweb SDK baru
-import { createThirdwebClient } from "thirdweb";
 import { ConnectButton, useActiveAccount } from "thirdweb/react"; 
-import { createWallet } from "thirdweb/wallets"; 
+import { supportedWallets } from '../thirdwebClient'; // Impor supportedWallets
 
 import { FormField, CustomButton, Loader } from '../components'; 
 
-// Inisialisasi Thirdweb Client
-// Idealnya, ini diimpor dari satu file konfigurasi atau context khusus untuk client Thirdweb
-const thirdwebClientId = import.meta.env.VITE_THIRDWEB_CLIENT_ID || "8c69441790f9fbaabbb795a921abb3f1"; // Ganti dengan Client ID Anda jika perlu
-if (!thirdwebClientId || thirdwebClientId === "YOUR_FALLBACK_CLIENT_ID") { // Tambahkan pengecekan yang lebih baik
-  console.error("KRITIS: VITE_THIRDWEB_CLIENT_ID tidak ditemukan atau placeholder masih digunakan!");
-}
-const client = createThirdwebClient({
-  clientId: thirdwebClientId,
-});
-
-// Definisikan daftar wallet yang didukung
-const supportedWallets = [
-  createWallet("io.metamask"),
-  createWallet("com.coinbase.wallet"),
-  createWallet("me.rainbow"),
-];
-
-const LoginPage = () => {
+// Terima 'client' sebagai prop
+const LoginPage = ({ client }) => { 
     const navigate = useNavigate();
     const location = useLocation();
     const { 

@@ -3,16 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext'; 
 import { ConnectButton, useActiveAccount } from "thirdweb/react"; 
-import { createThirdwebClient } from "thirdweb";
-import { createWallet } from "thirdweb/wallets"; 
+import { supportedWallets } from '../thirdwebClient'; // Impor supportedWallets
 import { FormField, CustomButton, Loader } from '../components'; 
 
-// Inisialisasi Thirdweb Client (jika belum global)
-const thirdwebClientId = import.meta.env.VITE_THIRDWEB_CLIENT_ID || "YOUR_FALLBACK_CLIENT_ID";
-const client = createThirdwebClient({ clientId: thirdwebClientId });
-const supportedWallets = [createWallet("io.metamask"), createWallet("com.coinbase.wallet")];
-
-const RegisterDonaturPage2Otp = () => {
+// Terima 'client' sebagai prop
+const RegisterDonaturPage2Otp = ({ client }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const { 
@@ -21,7 +16,8 @@ const RegisterDonaturPage2Otp = () => {
         authError, 
         clearAuthError,
         isAuthenticated, // Untuk redirect jika sudah login
-        user 
+        user,
+        setUser // Pastikan AuthContext memiliki fungsi setUser
     } = useAuthContext();
     
     const activeAccount = useActiveAccount(); 
@@ -53,7 +49,6 @@ const RegisterDonaturPage2Otp = () => {
         clearAuthError();
 
         if (!connectedAddress) {
-            // setAuthError dari context akan menangani ini
             setMessage("Silakan hubungkan dompet Metamask Anda terlebih dahulu.");
             return;
         }
@@ -65,6 +60,17 @@ const RegisterDonaturPage2Otp = () => {
         try {
             // Backend akan mengambil namaLengkap dan email dari session
             const response = await registerDonaturFinalize({ otp, walletAddress: connectedAddress });
+
+            // Simpan token ke localStorage
+            if (response.token) {
+                localStorage.setItem('token', response.token);
+            }
+
+            // Perbarui state autentikasi di AuthContext
+            if (response.user) {
+                setUser(response.user); // Pastikan AuthContext memiliki fungsi setUser
+            }
+
             // Pesan sukses akan ditampilkan, dan useEffect di atas akan menangani navigasi
             setMessage(response.message || "Registrasi Donatur sedang diproses...");
         } catch (err) {

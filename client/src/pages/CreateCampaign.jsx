@@ -7,7 +7,7 @@ import { useAuthContext } from '../context/AuthContext';
 import { FormField, CustomButton, Loader, ToggleSwitch } from '../components';
 import axios from 'axios'; 
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const CreateCampaign = () => {
   const navigate = useNavigate();
@@ -157,60 +157,55 @@ const CreateCampaign = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage(''); setFormError('');
-    if (!user) { setFormError("Anda harus login."); return; }
-    if (!form.judul || !form.deskripsi || !form.targetDana || !form.durasiHari || !form.kategoriId || !form.projectImageFile) {
-        setFormError("Mohon lengkapi semua field yang wajib diisi (*), termasuk gambar proyek."); return;
-    }
-    if (parseInt(form.durasiHari) < 7 || parseInt(form.durasiHari) > 30) { setFormError("Durasi harus 7-30 hari."); return; }
-    const validAnggotaNimsOnly = form.anggotaTim.map(a => a.nim.trim()).filter(nim => nim !== '');
-    if (form.isProyekTim && validAnggotaNimsOnly.some(nim => nim === user.nim)) {
-        setFormError("Anda sudah ketua, jangan input NIM Anda sebagai anggota."); return;
-    }
-    if (form.isProyekTim && currentAnggotaNim.trim() !== '' && (currentAnggotaInfo.error || !currentAnggotaInfo.nama)) {
-        setFormError("NIM anggota yang diinput belum valid. Tambahkan atau kosongkan."); return;
+    setMessage('');
+    setFormError('');
+
+    if (!user) {
+      setFormError("Anda harus login.");
+      return;
     }
 
-    const deadlineDate = new Date();
-    deadlineDate.setDate(deadlineDate.getDate() + parseInt(form.durasiHari));
-    const formattedDeadlineForDB = deadlineDate.toISOString().split('T')[0]; 
+    if (!form.judul || !form.deskripsi || !form.targetDana || !form.durasiHari || !form.kategoriId || !form.projectImageFile) {
+      setFormError("Mohon lengkapi semua field yang wajib diisi (*), termasuk gambar proyek.");
+      return;
+    }
+
+    // Validasi jika proyek tim diaktifkan
+    if (form.isProyekTim) {
+      const validAnggotaNimsOnly = form.anggotaTim.map((a) => a.nim.trim()).filter((nim) => nim !== '');
+      if (validAnggotaNimsOnly.length === 0) {
+        setFormError("Proyek tim tidak dapat tediri dari 1 orang.");
+        return;
+      }
+    }
 
     const formDataPayload = new FormData();
     formDataPayload.append('judul', form.judul);
     formDataPayload.append('deskripsi', form.deskripsi);
     formDataPayload.append('targetDana', form.targetDana);
-    formDataPayload.append('batasWaktu', formattedDeadlineForDB);
+    formDataPayload.append('durasiHari', form.durasiHari);
     formDataPayload.append('kategoriId', form.kategoriId);
-    formDataPayload.append('isNftReward', form.isNftReward.toString()); // Kirim sebagai string
-    formDataPayload.append('isProyekTim', form.isProyekTim.toString()); // Kirim sebagai string
+    formDataPayload.append('isNftReward', form.isNftReward.toString());
+    formDataPayload.append('isProyekTim', form.isProyekTim.toString());
     if (form.projectImageFile) {
-        formDataPayload.append('projectImageFile', form.projectImageFile);
+      formDataPayload.append('projectImageFile', form.projectImageFile);
     }
     if (form.isProyekTim) {
-        // ketuaId akan diambil dari req.user di backend
-        formDataPayload.append('anggotaTambahanNims', JSON.stringify(validAnggotaNimsOnly));
+      const validAnggotaNimsOnly = form.anggotaTim.map((a) => a.nim.trim()).filter((nim) => nim !== '');
+      formDataPayload.append('anggotaTambahanNims', JSON.stringify(validAnggotaNimsOnly));
     }
-    
-    // setIsLoading(true); // Akan dihandle oleh authIsLoading dari context jika API call ada di sana
-    try {
-        const response = await axios.post(`${API_BASE_URL}/projects/create`, formDataPayload, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        }); 
-        setMessage(response.data.message || "Proyek berhasil diajukan.");
-        
-        // Jika Anda memindahkan interaksi SC ke backend, bagian ini tidak perlu lagi di frontend
-        // if (createCampaign && response.data.success && response.data.proyekId) {
-        //     await createCampaign({ /* ... parameter SC ... */ });
-        // }
-        
-        setTimeout(() => navigate('/dashboard'), 3000);
 
+    try {
+      const response = await axios.post(`${API_BASE_URL}/projects/create`, formDataPayload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setMessage(response.data.message || "Proyek berhasil diajukan.");
+      setTimeout(() => navigate('/dashboard'), 3000);
     } catch (err) {
-        console.error("Gagal mengajukan proyek:", err);
-        const apiError = err.response?.data?.message || err.message;
-        setFormError(apiError || "Terjadi kesalahan saat mengajukan proyek.");
-    } 
-    // finally { setIsLoading(false); }
+      console.error("Gagal mengajukan proyek:", err);
+      const apiError = err.response?.data?.message || err.message;
+      setFormError(apiError || "Terjadi kesalahan saat mengajukan proyek.");
+    }
   };
   
   // isLoading utama untuk tombol submit dan beberapa field

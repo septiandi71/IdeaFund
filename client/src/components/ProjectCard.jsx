@@ -19,15 +19,26 @@ const UserIcon = () => (
     </svg>
 );
 
-const daysLeft = (deadline) => {
-  if (!deadline) return { text: "N/A", isUrgent: false, isFinished: false };
-  const difference = new Date(deadline).getTime() - Date.now();
-  if (difference <= 0) return { text: "Selesai", isUrgent: false, isFinished: true };
-  const remainingDays = Math.ceil(difference / (1000 * 60 * 60 * 24));
+export const daysLeft = (batasWaktu) => {
+  if (!batasWaktu) {
+    console.log('batasWaktu is invalid:', batasWaktu);
+    return {
+      text: 'Not Active',
+      isUrgent: false,
+      isFinished: false,
+    };
+  }
+
+  const difference = new Date(batasWaktu).getTime() - new Date().getTime();
+  const remainingDays = difference / (1000 * 3600 * 24);
+
+  const isFinished = remainingDays <= 0;
+  const isUrgent = remainingDays > 0 && remainingDays <= 3; // Anggap proyek mendekati selesai jika sisa hari <= 3
+
   return {
-    text: remainingDays.toString() + (remainingDays === 1 ? " hari" : " hari"),
-    isUrgent: remainingDays <= 7 && remainingDays > 0,
-    isFinished: false,
+    text: isFinished ? 'Finished' : `${Math.ceil(remainingDays)} hari`,
+    isUrgent,
+    isFinished,
   };
 };
 
@@ -56,7 +67,7 @@ const ProjectCard = ({ project, handleClick }) => {
   let statusBadgeClasses = 'text-gray-200 bg-gray-600/80';
   if (project.status === 'AKTIF') statusBadgeClasses = 'text-green-100 bg-green-500/80';
   else if (project.status === 'PENDING_REVIEW') statusBadgeClasses = 'text-yellow-100 bg-yellow-500/80';
-  else if (project.status === 'GAGAL') statusBadgeClasses = 'text-red-200 bg-red-600/80';
+  else if (project.status === 'DITOLAK') statusBadgeClasses = 'text-red-200 bg-red-600/80';
   else if (isFinished && percentage >=100) statusBadgeClasses = 'text-teal-100 bg-teal-500/80';
   else if (isFinished && percentage < 100) statusBadgeClasses = 'text-orange-200 bg-orange-500/80';
 
@@ -113,7 +124,17 @@ const ProjectCard = ({ project, handleClick }) => {
             </div>
             <div className="flex items-center text-[9px] sm:text-[10px] text-[#808191] gap-1 flex-shrink-0">
               <ClockIcon />
-              <p className={`font-medium ${isUrgent && !isFinished ? 'text-red-400 animate-pulse' : (isFinished ? 'text-gray-500' : 'text-[#b2b3bd]')}`}>{remainingText}</p>
+              <p
+                className={`font-medium ${
+                  isUrgent && !isFinished
+                    ? 'text-red-400 animate-pulse'
+                    : isFinished
+                    ? 'text-gray-500'
+                    : 'text-[#b2b3bd]'
+                }`}
+              >
+                {remainingText}
+              </p>
             </div>
           </div>
         </div>

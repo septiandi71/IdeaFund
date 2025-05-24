@@ -53,15 +53,6 @@ const Navbar = () => {
           <div className="font-epilogue text-white animate-pulse px-4 py-2 rounded-md bg-[#2c2f32]">Memuat...</div>
         ) : user ? ( 
           <>
-            {/* Tampilkan menu Create Campaign hanya untuk mahasiswa */}
-            {user.role === 'mahasiswa' && (
-              <CustomButton 
-                btnType="button"
-                title="Create Campaign"
-                styles="bg-[#1dc071] hover:bg-green-600 px-6 py-2 rounded-[10px]"
-                handleClick={() => navigate('/create-campaign')}
-              />
-            )}
             
             {/* Info Pengguna & Dropdown Profil */}
             <div className="flex items-center gap-2 relative"> {/* Tambahkan relative untuk posisi dropdown */}

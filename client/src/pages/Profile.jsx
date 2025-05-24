@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Loader, CustomButton } from '../components'; // Pastikan path ini benar
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Contoh Ikon (Anda bisa menggunakan SVG atau library ikon)
 const ProfileSectionIcon = ({ children, colorClass = "text-[#4acd8d]" }) => (
@@ -64,7 +64,7 @@ const ProfilePage = () => {
   const getStatusColor = (status) => {
     if (status === 'PENDANAAN_AKTIF') return 'text-blue-400';
     if (status && status.includes('SUKSES')) return 'text-green-400';
-    if (status === 'GAGAL') return 'text-red-400';
+    if (status === 'DITOLAK') return 'text-red-400';
     return 'text-gray-400';
   };
 
